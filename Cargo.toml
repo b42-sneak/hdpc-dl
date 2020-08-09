@@ -3,6 +3,11 @@ name = "hdpc-dl"
 version = "0.1.0"
 authors = ["b42-sneak <59374651+b42-sneak@users.noreply.github.com>"]
 edition = "2018"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/b42-sneak/hdpc-dl"
+homepage = "https://github.com/b42-sneak/hdpc-dl#readme"
+readme = "README.md"
+documentation = "https://docs.rs/hdpc-dl"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
