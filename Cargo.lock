@@ -333,6 +333,7 @@ dependencies = [
  "reqwest",
  "scraper",
  "select",
+ "tokio",
 ]
 
 [[package]]
