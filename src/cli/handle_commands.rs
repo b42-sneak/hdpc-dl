@@ -1,9 +1,5 @@
-// use clap::{App, Arg, SubCommand};
-use crate::core;
+use crate::{constants, core};
 use clap::{App, Arg};
-
-/// The version (semver) of this application as specified in Cargo.toml
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 /// Parse and execute the command specified via the CLI
 pub async fn exec_cli() -> Result<(), anyhow::Error> {
@@ -15,7 +11,7 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
 
   // Parse the CLI arguments
   let matches = App::new("HDPC downloader")
-    .version(VERSION)
+    .version(constants::VERSION)
     .author("b42-sneak <GitHub @b42-sneak>")
     .about("Downloads comics from HDPC")
     .arg(
