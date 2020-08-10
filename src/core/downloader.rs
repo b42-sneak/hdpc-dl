@@ -106,10 +106,20 @@ pub async fn download_from_url(
   };
 
   let serialized = serde_json::to_string_pretty(&data).unwrap();
-  println!("serialized = {}", serialized);
+
+  // Build-a-path
+  let mut path = dest.to_owned() + "/" + title;
+
+  // Create the destination folder if it doesn't exist
+  std::fs::create_dir_all(std::path::Path::new(&path))
+    .expect("Failed to create directory.\nTry to specify another path.\n");
+
+  // The JSON path
+  path.push_str("/info.json");
 
   // Write the JSON file to disk
-  // std::fs::create_dir_all(Path::new(String::from(dest) + "/"));
+  std::fs::write(&path, serialized)
+    .expect("Failed to create the JSON file.\nTry to specify another path.\n");
 
   // This somehow makes this all work
   Ok(())
