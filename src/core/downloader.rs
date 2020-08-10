@@ -26,6 +26,13 @@ pub async fn download_from_url(
 
   let document = Html::parse_document(&res);
 
+  let mut artists: Vec<&str> = Vec::new();
+  let mut tags: Vec<&str> = Vec::new();
+  let mut categories: Vec<&str> = Vec::new();
+  let mut images: &str = "";
+  let mut rating: &str = "";
+  let mut upload_date: &str = "";
+
   let artist_selector =
     Selector::parse("#infoBox > div:nth-child(1) > span.pill-cube > a").unwrap();
 
@@ -41,6 +48,36 @@ pub async fn download_from_url(
   // TODO Views, likes and dislikes are only available using another POST request
 
   let date_selector = Selector::parse("#infoBox > div:nth-child(7) > span.postDate").unwrap();
+
+  for element in document.select(&artist_selector) {
+    artists.push(element.text().next().unwrap());
+  }
+  for element in document.select(&tags_selector) {
+    tags.push(element.text().next().unwrap());
+  }
+
+  for element in document.select(&category_selector) {
+    categories.push(element.text().next().unwrap());
+  }
+
+  for element in document.select(&images_selector) {
+    images = element.text().next().unwrap();
+  }
+
+  for element in document.select(&rating_selector) {
+    rating = element.text().next().unwrap();
+  }
+
+  for element in document.select(&date_selector) {
+    upload_date = element.text().next().unwrap();
+  }
+
+  println!("{:#?}", artists);
+  println!("{:#?}", tags);
+  println!("{:#?}", categories);
+  println!("{:#?}", images);
+  println!("{:#?}", rating);
+  println!("{:#?}", upload_date);
 
   // This somehow makes this all work
   Ok(())
