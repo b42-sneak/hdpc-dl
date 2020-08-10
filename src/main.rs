@@ -7,8 +7,6 @@ mod core;
 async fn main() -> Result<(), anyhow::Error> {
     println!("Copyright 2020 b42-sneak; All rights reserved.\n");
 
-    cli::handle_commands::exec_cli().await;
-
-    // This somehow makes this all work
-    Ok(())
+    // Don't put a semicolon on the next line or it won't compile
+    cli::handle_commands::exec_cli().await
 }
