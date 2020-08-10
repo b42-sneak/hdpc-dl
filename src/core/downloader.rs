@@ -2,6 +2,7 @@ use chrono::prelude::*;
 use reqwest;
 use scraper::{Html, Selector};
 use serde::Serialize;
+use tokio::{fs, io::AsyncWriteExt};
 
 /// Downloads a comic given a URL and a destination
 pub async fn download_from_url(
@@ -109,25 +110,76 @@ pub async fn download_from_url(
     rating: rating,
     upload_date: upload_date,
     download_date: &Utc::now().to_rfc3339(),
-    picture_urls: picture_urls,
+    picture_urls: &picture_urls,
   };
 
   // Serialize the data to JSON
   let serialized = serde_json::to_string_pretty(&data).unwrap();
 
   // Build-a-path
-  let mut path = dest.to_owned() + "/" + title;
+  let path = dest.to_owned() + "/" + title;
 
   // Create the destination folder if it doesn't exist
   std::fs::create_dir_all(std::path::Path::new(&path))
     .expect("Failed to create directory.\nTry to specify another path.\n");
 
   // The JSON path
-  path.push_str("/hdpc-info.json");
+  let json_path = path.clone() + "/hdpc-info.json";
 
   // Write the JSON file to disk
-  std::fs::write(&path, serialized)
+  std::fs::write(&json_path, serialized)
     .expect("Failed to create the JSON file.\nTry to specify another path.\n");
+
+  // Log successful JSON file creation
+  println!("Created JSON file at \"{}\"\n", &json_path);
+
+  // Download the images and write them to disk
+  for i in 0..picture_urls.len() {
+    // Request the image from the server
+    let req = client.get(picture_urls[i]).send();
+
+    // Generate a file name
+    let file_name = format!(
+      "{:03}-{}",
+      i + 1,
+      reqwest::Url::parse(picture_urls[i])
+        .unwrap()
+        .path_segments()
+        .and_then(std::iter::Iterator::last)
+        .unwrap()
+    );
+
+    // Make a file path for Tokio
+    let file_path_str = path.clone() + "/" + &file_name;
+    let file_path = std::path::Path::new(&file_path_str);
+
+    // Await the response from the server
+    let mut res = req.await?;
+
+    // Make Tokio open the (new) file
+    let mut image_file = fs::OpenOptions::new()
+      .create(true)
+      .append(true)
+      .open(&file_path)
+      .await?;
+
+    // Write the file to disk
+    while let Some(chunk) = res.chunk().await? {
+      image_file.write_all(&chunk).await?;
+    }
+
+    println!(
+      "Wrote file {:03}/{:03}: {}",
+      i + 1,
+      picture_urls.len(),
+      file_name
+    )
+  }
+
+  println!(
+    "\nSuccessfully downloaded all {} images from \"{}\".",
+    images, title
+  );
 
   // This somehow makes this all work
   Ok(())
@@ -144,5 +196,5 @@ struct Export<'a> {
   images: &'a str,
   rating: &'a str,
   upload_date: &'a str,
-  picture_urls: Vec<&'a str>,
+  picture_urls: &'a Vec<&'a str>,
 }
