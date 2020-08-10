@@ -3,8 +3,12 @@ mod cli;
 mod core;
 
 /// The main function
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
     println!("Copyright 2020 b42-sneak; All rights reserved.\n");
 
-    cli::handle_commands::exec_cli();
+    cli::handle_commands::exec_cli().await;
+
+    // This somehow makes this all work
+    Ok(())
 }

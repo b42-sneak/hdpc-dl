@@ -6,7 +6,7 @@ use clap::{App, Arg};
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 /// Parse and execute the command specified via the CLI
-pub fn exec_cli() {
+pub async fn exec_cli() {
   // This variable is completely useless
   let temp = std::env::current_dir().unwrap();
 
@@ -44,5 +44,6 @@ pub fn exec_cli() {
     matches.value_of("URL").unwrap(),
     matches.value_of("destination").unwrap(),
     matches.occurrences_of("v"),
-  );
+  )
+  .await;
 }
