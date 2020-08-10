@@ -9,11 +9,7 @@
       "request": "launch",
       "name": "Debug executable 'hdpc-dl'",
       "cargo": {
-        "args": [
-          "build",
-          "--bin=hdpc-dl",
-          "--package=hdpc-dl"
-        ],
+        "args": ["build", "--bin=hdpc-dl", "--package=hdpc-dl"],
         "filter": {
           "name": "hdpc-dl",
           "kind": "bin"
@@ -27,12 +23,7 @@
       "request": "launch",
       "name": "Debug unit tests in executable 'hdpc-dl'",
       "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--bin=hdpc-dl",
-          "--package=hdpc-dl"
-        ],
+        "args": ["test", "--no-run", "--bin=hdpc-dl", "--package=hdpc-dl"],
         "filter": {
           "name": "hdpc-dl",
           "kind": "bin"
