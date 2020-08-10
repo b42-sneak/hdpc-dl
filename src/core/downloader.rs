@@ -1,6 +1,4 @@
 use reqwest;
-use select::document::Document;
-// use select::predicate::{Attr};
 use scraper::{Html, Selector};
 
 /// Downloads a comic given a URL and a destination
@@ -17,13 +15,6 @@ pub async fn download_from_url(
 
   let res = client.get(url).send().await?.text().await?.to_string();
 
-  // println!("{:#?}", res);
-  // let document = Document::from_read(res.as_bytes()).unwrap();
-
-  // println!("{:#?}", document);
-
-  // document.find(Attr())
-
   let document = Html::parse_document(&res);
 
   let mut artists: Vec<&str> = Vec::new();
@@ -32,6 +23,8 @@ pub async fn download_from_url(
   let mut images: &str = "";
   let mut rating: &str = "";
   let mut upload_date: &str = "";
+
+  let mut picture_urls: Vec<&str> = Vec::new();
 
   let artist_selector =
     Selector::parse("#infoBox > div:nth-child(1) > span.pill-cube > a").unwrap();
@@ -52,6 +45,7 @@ pub async fn download_from_url(
   for element in document.select(&artist_selector) {
     artists.push(element.text().next().unwrap());
   }
+
   for element in document.select(&tags_selector) {
     tags.push(element.text().next().unwrap());
   }
@@ -62,14 +56,17 @@ pub async fn download_from_url(
 
   for element in document.select(&images_selector) {
     images = element.text().next().unwrap();
+    images = images.trim();
   }
 
   for element in document.select(&rating_selector) {
     rating = element.text().next().unwrap();
+    rating = rating.trim();
   }
 
   for element in document.select(&date_selector) {
-    upload_date = element.text().next().unwrap();
+    upload_date = element.text().skip(1).next().unwrap();
+    upload_date = upload_date.trim();
   }
 
   println!("{:#?}", artists);
@@ -78,6 +75,22 @@ pub async fn download_from_url(
   println!("{:#?}", images);
   println!("{:#?}", rating);
   println!("{:#?}", upload_date);
+
+  let picture_selector =
+    Selector::parse("article.postContent.text-white > div > figure > a").unwrap();
+
+  for element in document.select(&picture_selector) {
+    picture_urls.push(
+      element
+        .value()
+        .attrs()
+        .find(|attr| attr.0 == "href")
+        .unwrap()
+        .1,
+    );
+  }
+
+  println!("{:#?}", picture_urls);
 
   // This somehow makes this all work
   Ok(())
