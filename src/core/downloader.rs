@@ -1,5 +1,6 @@
 use reqwest;
 use scraper::{Html, Selector};
+use serde::Serialize;
 
 /// Downloads a comic given a URL and a destination
 pub async fn download_from_url(
@@ -69,13 +70,6 @@ pub async fn download_from_url(
     upload_date = upload_date.trim();
   }
 
-  println!("{:#?}", artists);
-  println!("{:#?}", tags);
-  println!("{:#?}", categories);
-  println!("{:#?}", images);
-  println!("{:#?}", rating);
-  println!("{:#?}", upload_date);
-
   let picture_selector =
     Selector::parse("article.postContent.text-white > div > figure > a").unwrap();
 
@@ -90,8 +84,30 @@ pub async fn download_from_url(
     );
   }
 
-  println!("{:#?}", picture_urls);
+  let object = Export {
+    picture_urls: picture_urls,
+    artists: artists,
+    tags: tags,
+    categories: categories,
+    images: images,
+    rating: rating,
+    upload_date: upload_date,
+  };
+
+  let serialized = serde_json::to_string_pretty(&object).unwrap();
+  println!("serialized = {}", serialized);
 
   // This somehow makes this all work
   Ok(())
+}
+
+#[derive(Debug, Serialize)]
+struct Export<'a> {
+  artists: Vec<&'a str>,
+  tags: Vec<&'a str>,
+  categories: Vec<&'a str>,
+  images: &'a str,
+  rating: &'a str,
+  upload_date: &'a str,
+  picture_urls: Vec<&'a str>,
 }
