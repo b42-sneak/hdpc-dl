@@ -9,16 +9,20 @@ pub async fn download_from_url(
   dest: &str,
   _verbosity: u64,
 ) -> Result<(), anyhow::Error> {
-  // Inform the user the actions
+  // Inform the user about the actions to be taken
   println!("Destination: {}", dest);
   println!("URL: {}", url);
 
+  // Create a client to make requests with
   let client = reqwest::Client::new();
 
+  // Request the HTML file from the server
   let res = client.get(url).send().await?.text().await?.to_string();
 
+  // Parse the HTML from the response
   let document = Html::parse_document(&res);
 
+  // Create fields to hold the data to be extracted
   let mut artists: Vec<&str> = Vec::new();
   let mut tags: Vec<&str> = Vec::new();
   let mut categories: Vec<&str> = Vec::new();
@@ -26,9 +30,10 @@ pub async fn download_from_url(
   let mut rating: &str = "";
   let mut upload_date: &str = "";
   let mut title: &str = "";
-
   let mut picture_urls: Vec<&str> = Vec::new();
 
+  // The selectors for the strings to be extracted
+  // TODO Views, likes and dislikes are only available using another POST request
   let artist_selector =
     Selector::parse("#infoBox > div:nth-child(1) > span.pill-cube > a").unwrap();
 
@@ -41,12 +46,11 @@ pub async fn download_from_url(
 
   let rating_selector = Selector::parse("#infoBox > div:nth-child(6) > span.postLikes").unwrap();
 
-  // TODO Views, likes and dislikes are only available using another POST request
-
   let date_selector = Selector::parse("#infoBox > div:nth-child(7) > span.postDate").unwrap();
 
   let title_selector = Selector::parse("article.postContent.text-white > h2").unwrap();
 
+  // Loop over the matches and extract all relevant data
   for element in document.select(&artist_selector) {
     artists.push(element.text().next().unwrap());
   }
@@ -79,9 +83,11 @@ pub async fn download_from_url(
     title = title.trim();
   }
 
+  // The selector for the image URLs
   let picture_selector =
     Selector::parse("article.postContent.text-white > div > figure > a").unwrap();
 
+  // Loop over all imagesas
   for element in document.select(&picture_selector) {
     picture_urls.push(
       element
@@ -93,6 +99,7 @@ pub async fn download_from_url(
     );
   }
 
+  // Fill the data structure for the JSON document to be exported
   let data = Export {
     title: title,
     artists: artists,
@@ -105,6 +112,7 @@ pub async fn download_from_url(
     picture_urls: picture_urls,
   };
 
+  // Serialize the data to JSON
   let serialized = serde_json::to_string_pretty(&data).unwrap();
 
   // Build-a-path
@@ -125,6 +133,7 @@ pub async fn download_from_url(
   Ok(())
 }
 
+// The data structure for the JSON document to be exported
 #[derive(Debug, Serialize)]
 struct Export<'a> {
   title: &'a str,
