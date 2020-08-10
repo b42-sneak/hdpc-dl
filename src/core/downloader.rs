@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use reqwest;
 use scraper::{Html, Selector};
 use serde::Serialize;
@@ -24,6 +25,7 @@ pub async fn download_from_url(
   let mut images: &str = "";
   let mut rating: &str = "";
   let mut upload_date: &str = "";
+  let mut title: &str = "";
 
   let mut picture_urls: Vec<&str> = Vec::new();
 
@@ -42,6 +44,8 @@ pub async fn download_from_url(
   // TODO Views, likes and dislikes are only available using another POST request
 
   let date_selector = Selector::parse("#infoBox > div:nth-child(7) > span.postDate").unwrap();
+
+  let title_selector = Selector::parse("article.postContent.text-white > h2").unwrap();
 
   for element in document.select(&artist_selector) {
     artists.push(element.text().next().unwrap());
@@ -70,6 +74,11 @@ pub async fn download_from_url(
     upload_date = upload_date.trim();
   }
 
+  for element in document.select(&title_selector) {
+    title = element.text().next().unwrap();
+    title = title.trim();
+  }
+
   let picture_selector =
     Selector::parse("article.postContent.text-white > div > figure > a").unwrap();
 
@@ -84,18 +93,23 @@ pub async fn download_from_url(
     );
   }
 
-  let object = Export {
-    picture_urls: picture_urls,
+  let data = Export {
+    title: title,
     artists: artists,
     tags: tags,
     categories: categories,
     images: images,
     rating: rating,
     upload_date: upload_date,
+    download_date: &Utc::now().to_rfc3339(),
+    picture_urls: picture_urls,
   };
 
-  let serialized = serde_json::to_string_pretty(&object).unwrap();
+  let serialized = serde_json::to_string_pretty(&data).unwrap();
   println!("serialized = {}", serialized);
+
+  // Write the JSON file to disk
+  // std::fs::create_dir_all(Path::new(String::from(dest) + "/"));
 
   // This somehow makes this all work
   Ok(())
@@ -103,6 +117,8 @@ pub async fn download_from_url(
 
 #[derive(Debug, Serialize)]
 struct Export<'a> {
+  title: &'a str,
+  download_date: &'a str,
   artists: Vec<&'a str>,
   tags: Vec<&'a str>,
   categories: Vec<&'a str>,
