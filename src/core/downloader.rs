@@ -115,7 +115,7 @@ pub async fn download_from_url(
     .expect("Failed to create directory.\nTry to specify another path.\n");
 
   // The JSON path
-  path.push_str("/info.json");
+  path.push_str("/hdpc-info.json");
 
   // Write the JSON file to disk
   std::fs::write(&path, serialized)
