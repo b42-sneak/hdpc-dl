@@ -5,7 +5,12 @@ use serde::Serialize;
 use tokio::{fs, io::AsyncWriteExt};
 
 /// Downloads a comic given a URL and a destination
-pub async fn download_from_url(url: &str, dest: &str, verbosity: u64) -> Result<(), anyhow::Error> {
+pub async fn download_from_url(
+  url: &str,
+  dest: &str,
+  verbosity: u64,
+  json_only: bool,
+) -> Result<(), anyhow::Error> {
   // Inform the user about the actions to be taken
   println!("Destination: {}", dest);
   println!("URL: {}", url);
@@ -110,7 +115,15 @@ pub async fn download_from_url(url: &str, dest: &str, verbosity: u64) -> Result<
     .expect("Failed to create the JSON file.\nTry to specify another path.\n");
 
   // Log successful JSON file creation
-  println!("Created JSON file at \"{}\"\n", &json_path);
+  println!("Created JSON file at \"{}\"", &json_path);
+
+  // Return if --json-only was specified
+  if json_only {
+    return Ok(());
+  }
+
+  // Only print an empty line if --json-only was not specified
+  println!();
 
   // Download the images and write them to disk
   for i in 0..picture_urls.len() {

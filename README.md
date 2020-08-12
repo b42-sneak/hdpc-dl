@@ -23,11 +23,11 @@ The application is very easy to use, it only takes a URL, and an optional destin
 ```none
 ╭─b42-sneak@b42-sneak-pc ~/src/target/release
 ╰─➤  hdpc-dl --help
-HDPC Downloader version 1.0.0
+HDPC Downloader version 1.4.0
 Copyright 2020 b42-sneak; All rights reserved.
 Licensed under the AGPL 3.0 <https://www.gnu.org/licenses/agpl-3.0.en.html>
 
-HDPC downloader 1.0.0
+HDPC downloader 1.4.0
 b42-sneak <GitHub @b42-sneak>
 Downloads comics from HDPC
 
@@ -35,9 +35,10 @@ USAGE:
     hdpc-dl [FLAGS] [OPTIONS] <URL>
 
 FLAGS:
-    -h, --help       Prints help information
-    -v               Sets the level of verbosity: 1 for file names, 2 for percentage decimals
-    -V, --version    Prints version information
+    -h, --help         Prints help information
+    -j, --json-only    Only generate the JSON file
+    -v                 Sets the level of verbosity: 1 for file names, 2 for percentage decimals
+    -V, --version      Prints version information
 
 OPTIONS:
     -d, --destination <destination>    Sets the download destination path [default: (the working directory)]
@@ -52,6 +53,13 @@ Download `https://example.com/1`:
 
 - To the working directory: `hdpc-dl https://example.com/1`
 - To `/some/other/directory`: `hdpc-dl https://example.com/1 -d /some/other/directory`
+
+Only create (or overwrite) a JSON file `https://example.com/1`:
+
+- In the working directory: `hdpc-dl https://example.com/1 -j`
+- In `/some/other/directory`:
+  - `hdpc-dl https://example.com/1 -d /some/other/directory -j`
+  - `hdpc-dl https://example.com/1 -jd /some/other/directory`
 
 ### The `-v` flag
 

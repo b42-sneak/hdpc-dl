@@ -28,6 +28,12 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
         .long("destination"),
     )
     .arg(
+      Arg::with_name("json only")
+        .help("Only generate the JSON file")
+        .short("j")
+        .long("json-only"),
+    )
+    .arg(
       Arg::with_name("v")
         .short("v")
         .multiple(true)
@@ -40,6 +46,7 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
     matches.value_of("URL").unwrap(),
     matches.value_of("destination").unwrap(),
     matches.occurrences_of("v"),
+    matches.is_present("json only"),
   )
   .await
 }
