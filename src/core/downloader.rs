@@ -23,70 +23,56 @@ pub async fn download_from_url(
   // Parse the HTML from the response
   let document = Html::parse_document(&res);
 
-  // Create fields to hold the data to be extracted
-  let mut artists: Vec<&str> = Vec::new();
-  let mut tags: Vec<&str> = Vec::new();
-  let mut categories: Vec<&str> = Vec::new();
-  let mut images: &str = "";
-  let mut rating: &str = "";
-  let mut upload_date: &str = "";
-  let mut title: &str = "";
+  // The URLs of the pictures to be downloaded
   let mut picture_urls: Vec<&str> = Vec::new();
 
+  // The metadata to be extracted
+  let mut metadata: Vec<Metadata> = Vec::new();
+
   // The selectors for the strings to be extracted
-  // TODO Views, likes and dislikes are only available using another POST request
-  let artist_selector =
-    Selector::parse("#infoBox > div:nth-child(1) > span.pill-cube > a").unwrap();
-
-  let tags_selector = Selector::parse("#infoBox > div:nth-child(2) > span > a").unwrap();
-
-  let category_selector =
-    Selector::parse("#infoBox > div:nth-child(3) > span.pill-cube > a").unwrap();
-
-  let images_selector = Selector::parse("#infoBox > div:nth-child(4) > span.postImages").unwrap();
-
-  let rating_selector = Selector::parse("#infoBox > div:nth-child(6) > span.postLikes").unwrap();
-
-  let date_selector = Selector::parse("#infoBox > div:nth-child(7) > span.postDate").unwrap();
-
-  let title_selector = Selector::parse("article.postContent.text-white > h2").unwrap();
-
-  // Loop over the matches and extract all relevant data
-  for element in document.select(&artist_selector) {
-    artists.push(element.text().next().unwrap());
-  }
-
-  for element in document.select(&tags_selector) {
-    tags.push(element.text().next().unwrap());
-  }
-
-  for element in document.select(&category_selector) {
-    categories.push(element.text().next().unwrap());
-  }
-
-  for element in document.select(&images_selector) {
-    images = element.text().next().unwrap();
-    images = images.trim();
-  }
-
-  for element in document.select(&rating_selector) {
-    rating = element.text().next().unwrap();
-    rating = rating.trim();
-  }
-
-  for element in document.select(&date_selector) {
-    upload_date = element.text().skip(1).next().unwrap();
-    upload_date = upload_date.trim();
-  }
-
-  for element in document.select(&title_selector) {
-    title = element.text().next().unwrap();
-    title = title.trim();
-  }
+  let row_selector = Selector::parse("#infoBox > div.pt-1").unwrap();
+  let span_selector = Selector::parse("span").unwrap();
 
   // The selector for the image URLs
   let picture_selector =
     Selector::parse("article.postContent.text-white > div > figure > a").unwrap();
+
+  // TODO Views, likes and dislikes are only available using another POST request
+
+  // Extract the title
+  let title = match document
+    .select(&Selector::parse("article.postContent.text-white > h2").unwrap())
+    .next()
+  {
+    Some(element) => element.text().next().unwrap_or("no-title-found").trim(),
+    None => "Could-not-extract-title",
+  };
+
+  // Extract all metadata
+  for row in document.select(&row_selector) {
+    let mut columns = row.select(&span_selector);
+
+    let name = match columns.next() {
+      Some(content) => remove_colon(content.text().next().unwrap_or("no-text-here").trim()),
+      None => "nothing-to-be-seen-here",
+    };
+
+    if name == "*" {
+      continue;
+    };
+
+    let mut entries = Vec::new();
+
+    for column in columns {
+      for content in column.text() {
+        if content.trim() != "" {
+          entries.push(content.trim());
+        }
+      }
+    }
+
+    metadata.push(Metadata { name, entries });
+  }
 
   // Loop over all imagesas
   for element in document.select(&picture_selector) {
@@ -102,14 +88,10 @@ pub async fn download_from_url(
 
   // Fill the data structure for the JSON document to be exported
   let data = Export {
+    hdpc_dl_version: 2,
     title: title,
-    artists: artists,
-    tags: tags,
-    categories: categories,
-    images: images,
-    rating: rating,
-    upload_date: upload_date,
     download_date: &Utc::now().to_rfc3339(),
+    metadata: &metadata,
     picture_urls: &picture_urls,
   };
 
@@ -178,7 +160,8 @@ pub async fn download_from_url(
 
   println!(
     "\nSuccessfully downloaded all {} images from \"{}\".",
-    images, title
+    picture_urls.len(),
+    title
   );
 
   // This somehow makes this all work
@@ -188,13 +171,24 @@ pub async fn download_from_url(
 // The data structure for the JSON document to be exported
 #[derive(Debug, Serialize)]
 struct Export<'a> {
+  hdpc_dl_version: i32,
   title: &'a str,
   download_date: &'a str,
-  artists: Vec<&'a str>,
-  tags: Vec<&'a str>,
-  categories: Vec<&'a str>,
-  images: &'a str,
-  rating: &'a str,
-  upload_date: &'a str,
+  metadata: &'a Vec<Metadata<'a>>,
   picture_urls: &'a Vec<&'a str>,
+}
+
+#[derive(Debug, Serialize)]
+struct Metadata<'a> {
+  name: &'a str,
+  entries: Vec<&'a str>,
+}
+
+/// Removes the space and the colon from the end of a string slice
+fn remove_colon(s: &str) -> &str {
+  if s.len() < 2 || s[s.len() - 2..] != *" :" {
+    s
+  } else {
+    &s[..s.len() - 2]
+  }
 }
