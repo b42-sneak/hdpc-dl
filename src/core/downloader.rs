@@ -84,9 +84,10 @@ pub async fn download_from_url(url: &str, dest: &str, verbosity: u64) -> Result<
 
   // Fill the data structure for the JSON document to be exported
   let data = Export {
-    hdpc_dl_version: 2,
+    hdpc_dl_version: 3,
     title: title,
     download_date: &Utc::now().to_rfc3339(),
+    source_url: &url,
     metadata: &metadata,
     picture_urls: &picture_urls,
   };
@@ -192,6 +193,7 @@ struct Export<'a> {
   hdpc_dl_version: i32,
   title: &'a str,
   download_date: &'a str,
+  source_url: &'a str,
   metadata: &'a Vec<Metadata<'a>>,
   picture_urls: &'a Vec<&'a str>,
 }
