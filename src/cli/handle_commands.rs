@@ -31,7 +31,7 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
       Arg::with_name("v")
         .short("v")
         .multiple(true)
-        .help("Sets the level of verbosity"),
+        .help("Sets the level of verbosity: 1 for file names, 2 for percentage decimals"),
     )
     .get_matches();
 

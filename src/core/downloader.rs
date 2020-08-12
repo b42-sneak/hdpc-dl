@@ -5,11 +5,7 @@ use serde::Serialize;
 use tokio::{fs, io::AsyncWriteExt};
 
 /// Downloads a comic given a URL and a destination
-pub async fn download_from_url(
-  url: &str,
-  dest: &str,
-  _verbosity: u64,
-) -> Result<(), anyhow::Error> {
+pub async fn download_from_url(url: &str, dest: &str, verbosity: u64) -> Result<(), anyhow::Error> {
   // Inform the user about the actions to be taken
   println!("Destination: {}", dest);
   println!("URL: {}", url);
@@ -150,12 +146,34 @@ pub async fn download_from_url(
       image_file.write_all(&chunk).await?;
     }
 
-    println!(
-      "Wrote file {:03}/{:03}: {}",
-      i + 1,
-      picture_urls.len(),
-      file_name
-    )
+    match verbosity {
+      0 => {
+        println!(
+          "{:03}/{:03} ({:3.0}%)",
+          i + 1,
+          picture_urls.len(),
+          ((i as f32 + 1.) / picture_urls.len() as f32) * 100.
+        );
+      }
+      1 => {
+        println!(
+          "Wrote file {:03}/{:03} ({:3.0}%): {}",
+          i + 1,
+          picture_urls.len(),
+          ((i as f32 + 1.) / picture_urls.len() as f32) * 100.,
+          file_name,
+        );
+      }
+      _ => {
+        println!(
+          "Wrote file {:03}/{:03} ({:3.3}%): {}",
+          i + 1,
+          picture_urls.len(),
+          ((i as f32 + 1.) / picture_urls.len() as f32) * 100.,
+          file_name,
+        );
+      }
+    };
   }
 
   println!(

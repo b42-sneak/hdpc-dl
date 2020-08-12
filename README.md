@@ -36,7 +36,7 @@ USAGE:
 
 FLAGS:
     -h, --help       Prints help information
-    -v               Sets the level of verbosity
+    -v               Sets the level of verbosity: 1 for file names, 2 for percentage decimals
     -V, --version    Prints version information
 
 OPTIONS:
@@ -46,4 +46,70 @@ ARGS:
     <URL>    Sets the URL of the comic to download
 ```
 
-Notice: The `-v` flag does nothing 🤷
+### Examples
+
+Download `https://example.com/1`:
+
+- To the working directory: `hdpc-dl https://example.com/1`
+- To `/some/other/directory`: `hdpc-dl https://example.com/1 -d /some/other/directory`
+
+### The `-v` flag
+
+Here are some examples:
+
+Without any (`hdpc-dl <URL>`):
+
+```none
+001/131 (  1%)
+002/131 (  2%)
+003/131 (  2%)
+004/131 (  3%)
+005/131 (  4%)
+006/131 (  5%)
+007/131 (  5%)
+008/131 (  6%)
+009/131 (  7%)
+010/131 (  8%)
+011/131 (  8%)
+012/131 (  9%)
+013/131 ( 10%)
+014/131 ( 11%)
+```
+
+With one (`hdpc-dl <URL> -v`):
+
+```none
+Wrote file 001/131 (  1%): 001-comic-name-1.jpg
+Wrote file 002/131 (  2%): 002-comic-name-2.jpg
+Wrote file 003/131 (  2%): 003-comic-name-3.jpg
+Wrote file 004/131 (  3%): 004-comic-name-4.jpg
+Wrote file 005/131 (  4%): 005-comic-name-5.jpg
+Wrote file 006/131 (  5%): 006-comic-name-6.jpg
+Wrote file 007/131 (  5%): 007-comic-name-7.jpg
+Wrote file 008/131 (  6%): 008-comic-name-8.jpg
+Wrote file 009/131 (  7%): 009-comic-name-9.jpg
+Wrote file 010/131 (  8%): 010-comic-name-10.jpg
+Wrote file 011/131 (  8%): 011-comic-name-11.jpg
+Wrote file 012/131 (  9%): 012-comic-name-12.jpg
+Wrote file 013/131 ( 10%): 013-comic-name-13.jpg
+Wrote file 014/131 ( 11%): 014-comic-name-14.jpg
+```
+
+With two or more (`hdpc-dl <URL> -vv` or `hdpc-dl <URL> -vvvvv`):
+
+```none
+Wrote file 001/131 (0.763%): 001-comic-name-1.jpg
+Wrote file 002/131 (1.527%): 002-comic-name-2.jpg
+Wrote file 003/131 (2.290%): 003-comic-name-3.jpg
+Wrote file 004/131 (3.053%): 004-comic-name-4.jpg
+Wrote file 005/131 (3.817%): 005-comic-name-5.jpg
+Wrote file 006/131 (4.580%): 006-comic-name-6.jpg
+Wrote file 007/131 (5.344%): 007-comic-name-7.jpg
+Wrote file 008/131 (6.107%): 008-comic-name-8.jpg
+Wrote file 009/131 (6.870%): 009-comic-name-9.jpg
+Wrote file 010/131 (7.634%): 010-comic-name-10.jpg
+Wrote file 011/131 (8.397%): 011-comic-name-11.jpg
+Wrote file 012/131 (9.160%): 012-comic-name-12.jpg
+Wrote file 013/131 (9.924%): 013-comic-name-13.jpg
+Wrote file 014/131 (10.687%): 014-comic-name-14.jpg
+```
