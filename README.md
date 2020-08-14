@@ -25,7 +25,7 @@ The application is very easy to use, it only takes a URL (in `one`-mode), and an
 ```none
 ╭─b42-sneak@b42-sneak-pc ~/Downloads/hd-pc
 ╰─➤  hdpc-dl --help
-HDPC Downloader 2.0.0
+HDPC Downloader 2.1.0
 b42-sneak <GitHub @b42-sneak>
 Downloads comics from HDPC
 
@@ -54,7 +54,7 @@ Licensed under the AGPL 3.0 <https://www.gnu.org/licenses/agpl-3.0.en.html>
 ```none
 ╭─b42-sneak@b42-sneak-pc ~/Downloads/hd-pc
 ╰─➤  hdpc-dl one --help
-hdpc-dl-one 2.0.0
+hdpc-dl-one 2.1.0
 Downloads one comic
 
 USAGE:
@@ -77,14 +77,22 @@ Licensed under the AGPL 3.0 <https://www.gnu.org/licenses/agpl-3.0.en.html>
 ```none
 ╭─b42-sneak@b42-sneak-pc ~/Downloads/hd-pc
 ╰─➤  hdpc-dl crawl --help
-hdpc-dl-crawl 2.0.0
+hdpc-dl-crawl 2.1.0
 Finds all comics on a URL and downloads them all
 
 USAGE:
-    hdpc-dl crawl
+    hdpc-dl crawl [FLAGS] [OPTIONS] <URL>
 
 FLAGS:
-    -h, --help    Prints help information
+    -h, --help      Prints help information
+    -p, --paging    Tries to continue on the next page withing the download limit & offset
+
+OPTIONS:
+    -l, --limit <limit>    Limit to n finding(s) to be downloaded [default: 0]
+    -s, --skip <skip>      Skip the first n finding(s) [default: 0]
+
+ARGS:
+    <URL>    Sets the URL of the page to be crawled
 
 Copyright 2020 b42-sneak; All rights reserved.
 Licensed under the AGPL 3.0 <https://www.gnu.org/licenses/agpl-3.0.en.html>
@@ -103,6 +111,11 @@ Only create (or overwrite) a JSON file for `https://example.com/something`:
 - In `/some/other/directory`:
   - `hdpc-dl -d /some/other/directory -j one https://example.com/something`
   - `hdpc-dl -jd /some/other/directory one https://example.com/something`
+
+The `crawl` sub-command downloads everything it finds on a page (except for the page itself).  
+You can limit it using the `--limit 42` (or `-l 42`) option to limit it to 42 targets.
+
+When the `--paging` (or `-p`) flag is set, it will download other pages, until it has enough results.
 
 ### The `-v` flag
 
