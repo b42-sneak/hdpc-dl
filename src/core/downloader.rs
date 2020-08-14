@@ -305,7 +305,11 @@ pub async fn crawl_download(
   }
 
   // Calculate the amount of targets to download
-  let mut to_download = target_urls.len() - skip;
+  let mut to_download = if { skip < target_urls.len() } {
+    target_urls.len() - skip
+  } else {
+    0
+  };
   if limit != 0 && to_download > limit {
     to_download = limit
   }
