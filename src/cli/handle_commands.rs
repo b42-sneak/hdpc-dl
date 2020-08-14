@@ -1,5 +1,5 @@
 use crate::{constants, core};
-use clap::{value_t, App, AppSettings, Arg, ArgSettings, SubCommand};
+use clap::{value_t, App, AppSettings, Arg, SubCommand};
 
 /// Parse and execute the command specified via the CLI
 pub async fn exec_cli() -> Result<(), anyhow::Error> {

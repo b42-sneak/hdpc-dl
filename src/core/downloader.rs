@@ -2,7 +2,6 @@ use chrono::prelude::*;
 use reqwest;
 use scraper::{Html, Selector};
 use serde::Serialize;
-use std::convert::TryInto;
 use tokio::{fs, io::AsyncWriteExt};
 
 /// Downloads a comic given a URL and a destination
