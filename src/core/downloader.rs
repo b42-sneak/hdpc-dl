@@ -247,20 +247,25 @@ pub async fn crawl_download(
   let target_selector =
     Selector::parse("div.posttitle > a:not([rel]), div.panelTitle > a:not([rel])").unwrap();
 
+  // The next-page button
+  let next_page_selector = Selector::parse("a.next.page-numbers").unwrap();
+
   // The URLs of the targets to be downloaded
   let mut target_urls: Vec<String> = Vec::new();
+
+  // The current URL being crawled
+  let mut page_url = url;
+
+  let mut document;
 
   // Collect all URLs to download
   // This is a do-while loop; see the condition below
   while {
-    // Shadow the URL
-    let url = url;
-
     // Request the HTML file from the server
-    let res = client.get(url).send().await?.text().await?.to_string();
+    let res = client.get(page_url).send().await?.text().await?.to_string();
 
     // Parse the HTML from the response
-    let document = Html::parse_document(&res);
+    document = Html::parse_document(&res);
 
     // Loop over all imagesas
     for element in document.select(&target_selector) {
@@ -276,20 +281,44 @@ pub async fn crawl_download(
     }
 
     // The condition for the do-while loop
+    // Only advance to the next page if it is required
     paging && (target_urls.len() - skip) < limit
   } {
-    // Advance to the next page
-    // TODO Advance to the next page
+    // Try to advance to the next page
+    if let Some(next_url) = document.select(&next_page_selector).next() {
+      // Advance to the next page
+      page_url = next_url
+        .value()
+        .attrs()
+        .find(|attr| attr.0 == "href")
+        .unwrap()
+        .1;
+    } else {
+      // Stop if there are no more pages
+      break;
+    }
   }
+
+  // Calculate the amount of targets to download
+  let to_download = target_urls.len() - skip;
+  let to_download = if to_download < limit {
+    to_download
+  } else {
+    limit
+  };
 
   // Download everything
   for i in skip..target_urls.len() {
+    // This handles
     download_from_url(url, dest, verbosity, json_only).await?;
 
     // Increment the download count
     total_downloads += 1;
 
-    // Check if
+    // Check if the total_download counter is at the limit
+    if total_downloads == limit {
+      break;
+    }
   }
 
   Ok(())
