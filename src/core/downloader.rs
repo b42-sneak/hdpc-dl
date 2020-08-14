@@ -253,7 +253,7 @@ pub async fn crawl_download(
   // The current URL being crawled
   let mut page_url = url;
 
-  println!("Crawling...");
+  let mut crawl_count = 0;
 
   let mut document;
 
@@ -279,9 +279,16 @@ pub async fn crawl_download(
       );
     }
 
+    crawl_count += 1;
+    println!(
+      "Crawling on page {}, found {} targets so far",
+      crawl_count,
+      target_urls.len()
+    );
+
     // The condition for the do-while loop
     // Only advance to the next page if it is required
-    paging && (target_urls.len() - skip) < limit
+    paging && (skip > target_urls.len() || (target_urls.len() - skip) < limit)
   } {
     // Try to advance to the next page
     if let Some(next_url) = document.select(&next_page_selector).next() {
