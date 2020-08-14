@@ -225,3 +225,43 @@ fn remove_colon(s: &str) -> &str {
     &s[..s.len() - 2]
   }
 }
+
+/// Crawls an entire search results page and downloads everything
+pub async fn crawl_download(
+  url: &str,
+  dest: &str,
+  verbosity: u64,
+  json_only: bool,
+  skip: u64,
+  limit: u64,
+  paging: bool,
+) -> Result<(), anyhow::Error> {
+  // Create a client to make requests with
+  let client = reqwest::Client::new();
+
+  // Request the HTML file from the server
+  let res = client.get(url).send().await?.text().await?.to_string();
+
+  // Parse the HTML from the response
+  let document = Html::parse_document(&res);
+
+  // Select all posts which are not ads
+  let target_selector =
+    Selector::parse("div.posttitle > a:not([rel]), div.panelTitle > a:not([rel])").unwrap();
+
+  // let target_selector = Selector::parse(":matches(div.posttitle, div.panelTitle) > a").unwrap();
+
+  // Loop over all imagesas
+  for element in document.select(&target_selector) {
+    println!(
+      "{}",
+      element
+        .value()
+        .attrs()
+        .find(|attr| attr.0 == "href")
+        .unwrap()
+        .1,
+    );
+  }
+  Ok(())
+}
