@@ -106,8 +106,8 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
         matches.value_of("destination").unwrap(),
         matches.occurrences_of("v"),
         matches.is_present("json only"),
-        value_t!(sub_matches.value_of("skip"), u64).unwrap_or_else(|e| e.exit()),
-        value_t!(sub_matches.value_of("limit"), u64).unwrap_or_else(|e| e.exit()),
+        value_t!(sub_matches.value_of("skip"), usize).unwrap_or_else(|e| e.exit()),
+        value_t!(sub_matches.value_of("limit"), usize).unwrap_or_else(|e| e.exit()),
         sub_matches.is_present("paging"),
       )
       .await

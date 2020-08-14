@@ -2,6 +2,7 @@ use chrono::prelude::*;
 use reqwest;
 use scraper::{Html, Selector};
 use serde::Serialize;
+use std::convert::TryInto;
 use tokio::{fs, io::AsyncWriteExt};
 
 /// Downloads a comic given a URL and a destination
@@ -232,36 +233,64 @@ pub async fn crawl_download(
   dest: &str,
   verbosity: u64,
   json_only: bool,
-  skip: u64,
-  limit: u64,
+  skip: usize,
+  limit: usize,
   paging: bool,
 ) -> Result<(), anyhow::Error> {
   // Create a client to make requests with
   let client = reqwest::Client::new();
 
-  // Request the HTML file from the server
-  let res = client.get(url).send().await?.text().await?.to_string();
-
-  // Parse the HTML from the response
-  let document = Html::parse_document(&res);
+  // Count the downloads
+  let mut total_downloads: usize = 0;
 
   // Select all posts which are not ads
   let target_selector =
     Selector::parse("div.posttitle > a:not([rel]), div.panelTitle > a:not([rel])").unwrap();
 
-  // let target_selector = Selector::parse(":matches(div.posttitle, div.panelTitle) > a").unwrap();
+  // The URLs of the targets to be downloaded
+  let mut target_urls: Vec<String> = Vec::new();
 
-  // Loop over all imagesas
-  for element in document.select(&target_selector) {
-    println!(
-      "{}",
-      element
-        .value()
-        .attrs()
-        .find(|attr| attr.0 == "href")
-        .unwrap()
-        .1,
-    );
+  // Collect all URLs to download
+  // This is a do-while loop; see the condition below
+  while {
+    // Shadow the URL
+    let url = url;
+
+    // Request the HTML file from the server
+    let res = client.get(url).send().await?.text().await?.to_string();
+
+    // Parse the HTML from the response
+    let document = Html::parse_document(&res);
+
+    // Loop over all imagesas
+    for element in document.select(&target_selector) {
+      target_urls.push(
+        element
+          .value()
+          .attrs()
+          .find(|attr| attr.0 == "href")
+          .unwrap()
+          .1
+          .to_owned(),
+      );
+    }
+
+    // The condition for the do-while loop
+    paging && (target_urls.len() - skip) < limit
+  } {
+    // Advance to the next page
+    // TODO Advance to the next page
   }
+
+  // Download everything
+  for i in skip..target_urls.len() {
+    download_from_url(url, dest, verbosity, json_only).await?;
+
+    // Increment the download count
+    total_downloads += 1;
+
+    // Check if
+  }
+
   Ok(())
 }
