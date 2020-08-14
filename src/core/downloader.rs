@@ -233,15 +233,12 @@ pub async fn crawl_download(
   dest: &str,
   verbosity: u64,
   json_only: bool,
-  skip: usize,
   limit: usize,
+  skip: usize,
   paging: bool,
 ) -> Result<(), anyhow::Error> {
   // Create a client to make requests with
   let client = reqwest::Client::new();
-
-  // Count the downloads
-  let mut total_downloads: usize = 0;
 
   // Select all posts which are not ads
   let target_selector =
@@ -255,6 +252,8 @@ pub async fn crawl_download(
 
   // The current URL being crawled
   let mut page_url = url;
+
+  println!("Crawling...");
 
   let mut document;
 
@@ -300,26 +299,57 @@ pub async fn crawl_download(
   }
 
   // Calculate the amount of targets to download
-  let to_download = target_urls.len() - skip;
-  let to_download = if to_download < limit {
-    to_download
-  } else {
+  let mut to_download = target_urls.len() - skip;
+  if limit != 0 && to_download > limit {
+    to_download = limit
+  }
+
+  println!(
+    "Downloading {} of {} targets, (skip={}, limit={})",
+    to_download,
+    target_urls.len(),
+    skip,
     limit
+  );
+
+  let sl = skip + limit;
+
+  let upper_bound = if limit == 0 {
+    target_urls.len()
+  } else {
+    if sl > target_urls.len() {
+      target_urls.len()
+    } else {
+      sl
+    }
   };
 
+  // Count the downloads
+  let mut total_downloads: usize = 0;
+
   // Download everything
-  for i in skip..target_urls.len() {
-    // This handles
-    download_from_url(url, dest, verbosity, json_only).await?;
+  for i in skip..upper_bound {
+    println!(
+      "\nBatch download: {}/{} ({:3.0}%)",
+      total_downloads + 1,
+      to_download,
+      ((total_downloads as f32 + 1.) / to_download as f32) * 100.
+    );
+
+    // Download the target
+    download_from_url(&target_urls[i], dest, verbosity, json_only).await?;
 
     // Increment the download count
     total_downloads += 1;
-
-    // Check if the total_download counter is at the limit
-    if total_downloads == limit {
-      break;
-    }
   }
+
+  println!(
+    "\nDownloaded {} of {} targets, (skip={}, limit={})",
+    to_download,
+    target_urls.len(),
+    skip,
+    limit
+  );
 
   Ok(())
 }

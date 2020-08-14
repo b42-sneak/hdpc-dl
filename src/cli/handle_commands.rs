@@ -60,15 +60,15 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
             .help("Sets the URL of the page to be crawled")
             .required(true)
             .index(1),
-          Arg::with_name("skip")
-            .help("Skip the first n finding(s)")
-            .short("s")
-            .long("skip")
-            .default_value("0"),
           Arg::with_name("limit")
             .help("Limit to n finding(s) to be downloaded")
             .short("l")
             .long("limit")
+            .default_value("0"),
+          Arg::with_name("skip")
+            .help("Skip the first n finding(s)")
+            .short("s")
+            .long("skip")
             .default_value("0"),
           Arg::with_name("paging")
             .help("Tries to continue on the next page withing the download limit & offset")
@@ -106,8 +106,8 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
         matches.value_of("destination").unwrap(),
         matches.occurrences_of("v"),
         matches.is_present("json only"),
-        value_t!(sub_matches.value_of("skip"), usize).unwrap_or_else(|e| e.exit()),
         value_t!(sub_matches.value_of("limit"), usize).unwrap_or_else(|e| e.exit()),
+        value_t!(sub_matches.value_of("skip"), usize).unwrap_or_else(|e| e.exit()),
         sub_matches.is_present("paging"),
       )
       .await
