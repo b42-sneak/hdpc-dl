@@ -287,7 +287,7 @@ pub async fn crawl_download(
 
     // The condition for the do-while loop
     // Only advance to the next page if it is required
-    paging && (skip > target_urls.len() || (target_urls.len() - skip) < limit)
+    paging && (limit == 0 || skip > target_urls.len() || (target_urls.len() - skip) < limit)
   } {
     // Try to advance to the next page
     if let Some(next_url) = document.select(&next_page_selector).next() {
