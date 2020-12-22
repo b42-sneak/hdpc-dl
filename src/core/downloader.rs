@@ -49,6 +49,55 @@ pub async fn download_from_url(
     None => "Could-not-extract-title",
   };
 
+  // Extract the other title
+  let other_title = match document
+    .select(&Selector::parse("body > section > h1").unwrap())
+    .next()
+  {
+    Some(element) => element.text().next().unwrap_or("no-title-found").trim(),
+    None => "Could-not-extract-title",
+  };
+
+  // Extract the upvotes
+  let upvotes = match document
+    .select(&Selector::parse("#upVotes").unwrap())
+    .next()
+  {
+    Some(element) => element.text().next().unwrap_or("no-upvotes-found").trim(),
+    None => "Could-not-extract-upvotes",
+  };
+
+  // Extract the downvotes
+  let downvotes = match document
+    .select(&Selector::parse("#downVotes").unwrap())
+    .next()
+  {
+    Some(element) => element.text().next().unwrap_or("no-downvotes-found").trim(),
+    None => "Could-not-extract-downvotes",
+  };
+
+  // Extract the favorites
+  let favorites = match document
+    .select(&Selector::parse("#favorite-count").unwrap())
+    .next()
+  {
+    Some(element) => element.text().next().unwrap_or("no-favorites-found").trim(),
+    None => "Could-not-extract-favorites",
+  };
+
+  // Extract the comment_count
+  let comment_count = match document
+    .select(&Selector::parse("#comments-title").unwrap())
+    .next()
+  {
+    Some(element) => element
+      .text()
+      .next()
+      .unwrap_or("no-comment_count-found")
+      .trim(),
+    None => "Could-not-extract-comment_count",
+  };
+
   // Extract all metadata
   for row in document.select(&row_selector) {
     let mut columns = row.select(&span_selector);
@@ -91,6 +140,11 @@ pub async fn download_from_url(
   let data = Export {
     hdpc_dl_version: 4,
     title: title,
+    other_title: other_title,
+    upvotes: upvotes,
+    downvotes: downvotes,
+    favorites: favorites,
+    comment_count: comment_count,
     download_date: &Utc::now().to_rfc3339(),
     source_url: &url,
     metadata: &metadata,
@@ -205,6 +259,11 @@ pub async fn download_from_url(
 struct Export<'a> {
   hdpc_dl_version: i32,
   title: &'a str,
+  other_title: &'a str,
+  upvotes: &'a str,
+  downvotes: &'a str,
+  favorites: &'a str,
+  comment_count: &'a str,
   download_date: &'a str,
   source_url: &'a str,
   metadata: &'a Vec<Metadata<'a>>,
@@ -305,11 +364,12 @@ pub async fn crawl_download(
   }
 
   // Calculate the amount of targets to download
-  let mut to_download = if { skip < target_urls.len() } {
+  let mut to_download = if skip < target_urls.len() {
     target_urls.len() - skip
   } else {
     0
   };
+
   if limit != 0 && to_download > limit {
     to_download = limit
   }
