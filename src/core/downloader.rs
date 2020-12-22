@@ -31,7 +31,7 @@ pub async fn download_from_url(
   let mut metadata: Vec<Metadata> = Vec::new();
 
   // The selectors for the strings to be extracted
-  let row_selector = Selector::parse("#infoBox > div.pt-1").unwrap();
+  let row_selector = Selector::parse("#infoBox > div.items-center").unwrap();
   let span_selector = Selector::parse("span").unwrap();
 
   // The selector for the image URLs
@@ -89,7 +89,7 @@ pub async fn download_from_url(
 
   // Fill the data structure for the JSON document to be exported
   let data = Export {
-    hdpc_dl_version: 3,
+    hdpc_dl_version: 4,
     title: title,
     download_date: &Utc::now().to_rfc3339(),
     source_url: &url,
