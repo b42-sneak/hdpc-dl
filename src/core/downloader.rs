@@ -299,8 +299,10 @@ pub async fn crawl_download(
   let client = reqwest::Client::new();
 
   // Select all posts which are not ads
-  let target_selector =
-    Selector::parse("div.posttitle > a:not([rel]), div.panelTitle > a:not([rel])").unwrap();
+  let target_selector = Selector::parse(
+    "div.post > div > a.hover\\:no-underline:not([rel]), #related-comics > article > div > div > div > a",
+  )
+  .unwrap();
 
   // The next-page button
   let next_page_selector = Selector::parse("a.next.page-numbers").unwrap();
