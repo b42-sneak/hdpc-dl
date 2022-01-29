@@ -2,7 +2,7 @@
 name = "hdpc-dl"
 version = "2.2.1"
 authors = ["b42-sneak <59374651+b42-sneak@users.noreply.github.com>"]
-edition = "2018"
+edition = "2021"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/b42-sneak/hdpc-dl"
 homepage = "https://github.com/b42-sneak/hdpc-dl#readme"
