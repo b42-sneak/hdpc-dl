@@ -1,10 +1,11 @@
 {
   "cSpell.words": [
-    "Versionless",
     "chrono",
     "concat",
     "hdpc",
     "reqwest",
-    "semver"
+    "semver",
+    "tokio",
+    "Versionless"
   ]
 }

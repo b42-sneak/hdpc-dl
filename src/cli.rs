@@ -1,16 +1,16 @@
-use crate::{constants, core};
+use crate::{constants, downloader};
 use clap::{value_t, App, AppSettings, Arg, SubCommand};
 
 /// Parse and execute the command specified via the CLI
 pub async fn exec_cli() -> Result<(), anyhow::Error> {
-  // This variable is completely useless
-  let temp = std::env::current_dir().unwrap();
+    // This variable is completely useless
+    let temp = std::env::current_dir().unwrap();
 
-  // The working directory
-  let pwd = temp.to_str().unwrap();
+    // The working directory
+    let pwd = temp.to_str().unwrap();
 
-  // The app definition
-  let app = App::new(constants::NAME)
+    // The app definition
+    let app = App::new(constants::NAME)
     .version(constants::VERSION)
     .author("b42-sneak <GitHub @b42-sneak>")
     .about("Downloads comics from HDPC")
@@ -77,45 +77,45 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
         ]),
     );
 
-  // Parse the CLI arguments
-  let matches = app.get_matches();
+    // Parse the CLI arguments
+    let matches = app.get_matches();
 
-  println!("{} {}", constants::NAME, constants::VERSION);
-  println!("{}\n", constants::LICENSE);
+    println!("{} {}", constants::NAME, constants::VERSION);
+    println!("{}\n", constants::LICENSE);
 
-  match matches.subcommand_name() {
-    Some("one") => {
-      let sub_matches = matches.subcommand_matches("one").unwrap();
+    match matches.subcommand_name() {
+        Some("one") => {
+            let sub_matches = matches.subcommand_matches("one").unwrap();
 
-      // Call the download function
-      core::downloader::download_from_url(
-        sub_matches.value_of("URL").unwrap(),
-        matches.value_of("destination").unwrap(),
-        matches.occurrences_of("v"),
-        matches.is_present("json only"),
-      )
-      .await
+            // Call the download function
+            downloader::download_from_url(
+                sub_matches.value_of("URL").unwrap(),
+                matches.value_of("destination").unwrap(),
+                matches.occurrences_of("v"),
+                matches.is_present("json only"),
+            )
+            .await
+        }
+
+        Some("crawl") => {
+            let sub_matches = matches.subcommand_matches("crawl").unwrap();
+
+            // Call the crawl function
+            downloader::crawl_download(
+                sub_matches.value_of("URL").unwrap(),
+                matches.value_of("destination").unwrap(),
+                matches.occurrences_of("v"),
+                matches.is_present("json only"),
+                value_t!(sub_matches.value_of("limit"), usize).unwrap_or_else(|e| e.exit()),
+                value_t!(sub_matches.value_of("skip"), usize).unwrap_or_else(|e| e.exit()),
+                sub_matches.is_present("paging"),
+            )
+            .await
+        }
+
+        _ => {
+            println!("Something went very wrong");
+            Ok(()) // TODO replace with something less ok
+        }
     }
-
-    Some("crawl") => {
-      let sub_matches = matches.subcommand_matches("crawl").unwrap();
-
-      // Call the crawl function
-      core::downloader::crawl_download(
-        sub_matches.value_of("URL").unwrap(),
-        matches.value_of("destination").unwrap(),
-        matches.occurrences_of("v"),
-        matches.is_present("json only"),
-        value_t!(sub_matches.value_of("limit"), usize).unwrap_or_else(|e| e.exit()),
-        value_t!(sub_matches.value_of("skip"), usize).unwrap_or_else(|e| e.exit()),
-        sub_matches.is_present("paging"),
-      )
-      .await
-    }
-
-    _ => {
-      println!("Something went very wrong");
-      Ok(()) // TODO replace with something less ok
-    }
-  }
 }
