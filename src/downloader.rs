@@ -1,7 +1,14 @@
+use crate::{
+    constants,
+    data::*,
+    parser::{
+        extract_chapters, extract_comment_count, extract_image_urls, extract_post_id,
+        extract_ratings, extract_title,
+    },
+};
 use chrono::prelude::*;
 use reqwest;
 use scraper::{Html, Selector};
-use serde::Serialize;
 use tokio::{fs, io::AsyncWriteExt};
 
 /// Downloads a comic given a URL and a destination
@@ -19,13 +26,14 @@ pub async fn download_from_url(
     let client = reqwest::Client::new();
 
     // Request the HTML file from the server
-    let res = client.get(url).send().await?.text().await?.to_string();
+    let text = client.get(url).send().await?.text().await?.to_string();
 
     // Parse the HTML from the response
-    let document = Html::parse_document(&res);
+    // TODO remove this (and the entire HTML parsing process as well)
+    let document = Html::parse_document(&text);
 
     // The URLs of the pictures to be downloaded
-    let mut picture_urls: Vec<&str> = Vec::new();
+    let picture_urls = extract_image_urls(&text);
 
     // The metadata to be extracted
     let mut metadata: Vec<Metadata> = Vec::new();
@@ -34,71 +42,24 @@ pub async fn download_from_url(
     let row_selector = Selector::parse("#infoBox > div.items-center").unwrap();
     let span_selector = Selector::parse("span").unwrap();
 
-    // The selector for the image URLs
-    let picture_selector =
-        Selector::parse("article.postContent.text-white > div > figure > a").unwrap();
-
     // TODO Views, likes and dislikes are only available using another POST request
 
     // Extract the title
-    let title = match document
-        .select(&Selector::parse("article.postContent.text-white > h2").unwrap())
-        .next()
-    {
-        Some(element) => element.text().next().unwrap_or("no-title-found").trim(),
-        None => "Could-not-extract-title",
-    };
+    let title = extract_title(&text).expect("Couldn't extract title");
 
-    // Extract the other title
-    let other_title = match document
-        .select(&Selector::parse("body > section > h1").unwrap())
-        .next()
-    {
-        Some(element) => element.text().next().unwrap_or("no-title-found").trim(),
-        None => "Could-not-extract-title",
-    };
+    // Extract the ratings (upvotes, downvotes, and favorites)
+    let ratings = extract_ratings(&text).expect("Couldn't extract ratings");
 
-    // Extract the upvotes
-    let upvotes = match document
-        .select(&Selector::parse("#upVotes").unwrap())
-        .next()
-    {
-        Some(element) => element.text().next().unwrap_or("no-upvotes-found").trim(),
-        None => "Could-not-extract-upvotes",
-    };
+    // TODO handle chapters (part 1,2,3,...)
 
-    // Extract the downvotes
-    let downvotes = match document
-        .select(&Selector::parse("#downVotes").unwrap())
-        .next()
-    {
-        Some(element) => element.text().next().unwrap_or("no-downvotes-found").trim(),
-        None => "Could-not-extract-downvotes",
-    };
+    let comment_count = extract_comment_count(&text).expect("Couldn't extract comment count");
 
-    // Extract the favorites
-    let favorites = match document
-        .select(&Selector::parse("#favorite-count").unwrap())
-        .next()
-    {
-        Some(element) => element.text().next().unwrap_or("no-favorites-found").trim(),
-        None => "Could-not-extract-favorites",
-    };
+    let post_id = extract_post_id(&text).expect("Couldn't extract post id");
 
-    // Extract the comment_count
-    let comment_count = match document
-        .select(&Selector::parse("#comments-title").unwrap())
-        .next()
-    {
-        Some(element) => element
-            .text()
-            .next()
-            .unwrap_or("no-comment_count-found")
-            .trim(),
-        None => "Could-not-extract-comment_count",
-    };
+    let chapters = extract_chapters(&text);
 
     // Extract all metadata
+    // TODO avoid the use of HTML parsing here if possible
     for row in document.select(&row_selector) {
         let mut columns = row.select(&span_selector);
 
@@ -124,30 +85,20 @@ pub async fn download_from_url(
         metadata.push(Metadata { name, entries });
     }
 
-    // Loop over all imagesas
-    for element in document.select(&picture_selector) {
-        picture_urls.push(
-            element
-                .value()
-                .attrs()
-                .find(|attr| attr.0 == "href")
-                .unwrap()
-                .1,
-        );
-    }
-
     // Fill the data structure for the JSON document to be exported
-    let data = Export {
-        hdpc_dl_version: 4,
-        title: title,
-        other_title: other_title,
-        upvotes: upvotes,
-        downvotes: downvotes,
-        favorites: favorites,
-        comment_count: comment_count,
-        download_date: &Utc::now().to_rfc3339(),
+    let data = ExportV5 {
+        hdpc_dl_version: 5,
+        program_version: constants::VERSION,
+        post_id,
+        title: &title,
+        upvotes: ratings.upvotes,
+        downvotes: ratings.downvotes,
+        favorites: ratings.favorites,
+        comment_count,
+        download_date: Utc::now().to_rfc3339(),
         source_url: &url,
         metadata: &metadata,
+        chapters,
         picture_urls: &picture_urls,
     };
 
@@ -155,7 +106,7 @@ pub async fn download_from_url(
     let serialized = serde_json::to_string_pretty(&data).unwrap();
 
     // Build-a-path
-    let path = dest.to_owned() + "/" + title;
+    let path = dest.to_owned() + "/" + &title;
 
     // Create the destination folder if it doesn't exist
     std::fs::create_dir_all(std::path::Path::new(&path))
@@ -252,28 +203,6 @@ pub async fn download_from_url(
 
     // This somehow makes this all work
     Ok(())
-}
-
-// The data structure for the JSON document to be exported
-#[derive(Debug, Serialize)]
-struct Export<'a> {
-    hdpc_dl_version: i32,
-    title: &'a str,
-    other_title: &'a str,
-    upvotes: &'a str,
-    downvotes: &'a str,
-    favorites: &'a str,
-    comment_count: &'a str,
-    download_date: &'a str,
-    source_url: &'a str,
-    metadata: &'a Vec<Metadata<'a>>,
-    picture_urls: &'a Vec<&'a str>,
-}
-
-#[derive(Debug, Serialize)]
-struct Metadata<'a> {
-    name: &'a str,
-    entries: Vec<&'a str>,
 }
 
 /// Removes the space and the colon from the end of a string slice
