@@ -20,8 +20,8 @@ pub fn extract_chapters(text: &str) -> Vec<Chapter> {
     CHAPTERS_RX
         .captures_iter(text)
         .map(|caps| Chapter {
-            name: decode_html_entities(caps.get(1).unwrap().as_str()),
-            url: caps.get(2).unwrap().as_str(),
+            name: decode_html_entities(caps.get(2).unwrap().as_str()),
+            url: caps.get(1).unwrap().as_str(),
         })
         .collect()
 }
