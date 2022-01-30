@@ -3,11 +3,10 @@ use crate::{
     data::*,
     parser::{
         extract_chapters, extract_comment_count, extract_image_urls, extract_post_id,
-        extract_ratings, extract_title,
+        extract_ratings, extract_res_page_links, extract_target_links, extract_title,
     },
 };
 use chrono::prelude::*;
-use reqwest;
 use scraper::{Html, Selector};
 use tokio::{fs, io::AsyncWriteExt};
 
@@ -17,10 +16,13 @@ pub async fn download_from_url(
     dest: &str,
     verbosity: u64,
     json_only: bool,
+    use_padding: bool,
 ) -> Result<(), anyhow::Error> {
+    let padding = if use_padding { "  " } else { "" };
+
     // Inform the user about the actions to be taken
-    println!("Destination: {}", dest);
-    println!("URL: {}", url);
+    println!("{padding}Destination: {}", dest);
+    println!("{padding}URL: {}", url);
 
     // Create a client to make requests with
     let client = reqwest::Client::new();
@@ -96,7 +98,7 @@ pub async fn download_from_url(
         favorites: ratings.favorites,
         comment_count,
         download_date: Utc::now().to_rfc3339(),
-        source_url: &url,
+        source_url: url,
         metadata: &metadata,
         chapters,
         picture_urls: &picture_urls,
@@ -120,7 +122,7 @@ pub async fn download_from_url(
         .expect("Failed to create the JSON file.\nTry to specify another path.\n");
 
     // Log successful JSON file creation
-    println!("Created JSON file at \"{}\"", &json_path);
+    println!("{padding}Created JSON file at \"{}\"", &json_path);
 
     // Return if --json-only was specified
     if json_only {
@@ -168,7 +170,7 @@ pub async fn download_from_url(
         match verbosity {
             0 => {
                 println!(
-                    "{:03}/{:03} ({:3.0}%)",
+                    "{padding}{:03}/{:03} ({:3.0}%)",
                     i + 1,
                     picture_urls.len(),
                     ((i as f32 + 1.) / picture_urls.len() as f32) * 100.
@@ -176,7 +178,7 @@ pub async fn download_from_url(
             }
             1 => {
                 println!(
-                    "Wrote file {:03}/{:03} ({:3.0}%): {}",
+                    "{padding}Wrote file {:03}/{:03} ({:3.0}%): {}",
                     i + 1,
                     picture_urls.len(),
                     ((i as f32 + 1.) / picture_urls.len() as f32) * 100.,
@@ -185,7 +187,7 @@ pub async fn download_from_url(
             }
             _ => {
                 println!(
-                    "Wrote file {:03}/{:03} ({:3.3}%): {}",
+                    "{padding}Wrote file {:03}/{:03} ({:3.3}%): {}",
                     i + 1,
                     picture_urls.len(),
                     ((i as f32 + 1.) / picture_urls.len() as f32) * 100.,
@@ -196,9 +198,9 @@ pub async fn download_from_url(
     }
 
     println!(
-        "\nSuccessfully downloaded all {} images from \"{}\".",
-        picture_urls.len(),
-        title
+        "{pad}Successfully downloaded all {count} images from \"{title}\".",
+        count = picture_urls.len(),
+        pad = if use_padding { "\n  " } else { "" },
     );
 
     // This somehow makes this all work
@@ -227,130 +229,87 @@ pub async fn crawl_download(
     // Create a client to make requests with
     let client = reqwest::Client::new();
 
-    // Select all posts which are not ads
-    let target_selector = Selector::parse(
-    "div.post > div > a.hover\\:no-underline:not([rel]), #related-comics > article > div > div > div > a",
-  )
-  .unwrap();
+    let text = client.get(url).send().await?.text().await?;
 
-    // The next-page button
-    let next_page_selector = Selector::parse("a.next.page-numbers").unwrap();
-
-    // The URLs of the targets to be downloaded
-    let mut target_urls: Vec<String> = Vec::new();
-
-    // The current URL being crawled
-    let mut page_url = url;
-
-    let mut crawl_count = 0;
-
-    let mut document;
-
-    // Collect all URLs to download
-    // This is a do-while loop; see the condition below
-    while {
-        // Request the HTML file from the server
-        let res = client.get(page_url).send().await?.text().await?.to_string();
-
-        // Parse the HTML from the response
-        document = Html::parse_document(&res);
-
-        // Loop over all imagesas
-        for element in document.select(&target_selector) {
-            target_urls.push(
-                element
-                    .value()
-                    .attrs()
-                    .find(|attr| attr.0 == "href")
-                    .unwrap()
-                    .1
-                    .to_owned(),
-            );
-        }
-
-        crawl_count += 1;
-        println!(
-            "Crawling on page {}, found {} targets so far",
-            crawl_count,
-            target_urls.len()
-        );
-
-        // The condition for the do-while loop
-        // Only advance to the next page if it is required
-        paging && (limit == 0 || skip > target_urls.len() || (target_urls.len() - skip) < limit)
-    } {
-        // Try to advance to the next page
-        if let Some(next_url) = document.select(&next_page_selector).next() {
-            // Advance to the next page
-            page_url = next_url
-                .value()
-                .attrs()
-                .find(|attr| attr.0 == "href")
-                .unwrap()
-                .1;
+    let res_pages = {
+        let mut res_pages = if paging {
+            extract_res_page_links(&text)
         } else {
-            // Stop if there are no more pages
+            vec![]
+        };
+
+        if res_pages.is_empty() {
+            // If the result only contains one page (without pagination) add it manually
+            res_pages.push(ResPage { url, number: 1 })
+        }
+        res_pages
+    };
+
+    // Calculate the number of available posts & build a target list
+    let mut targets = vec![];
+    for page in res_pages
+        .iter()
+        .skip(skip / constants::TARGETS_PER_PAGE)
+        .take(div_ceil_patch(limit, constants::TARGETS_PER_PAGE))
+    {
+        let remaining_targets = limit.saturating_sub(targets.len());
+        if remaining_targets == 0 && limit != 0 {
             break;
         }
-    }
 
-    // Calculate the amount of targets to download
-    let mut to_download = if skip < target_urls.len() {
-        target_urls.len() - skip
-    } else {
-        0
-    };
+        // TODO implement skip properly
 
-    if limit != 0 && to_download > limit {
-        to_download = limit
-    }
-
-    println!(
-        "Downloading {} of {} targets, (skip={}, limit={})",
-        to_download,
-        target_urls.len(),
-        skip,
-        limit
-    );
-
-    let sl = skip + limit;
-
-    let upper_bound = if limit == 0 {
-        target_urls.len()
-    } else {
-        if sl > target_urls.len() {
-            target_urls.len()
-        } else {
-            sl
-        }
-    };
-
-    // Count the downloads
-    let mut total_downloads: usize = 0;
-
-    // Download everything
-    for i in skip..upper_bound {
+        // Collect all URLs to download
+        let text = client.get(page.url).send().await?.text().await?;
+        let mut page_contents = extract_target_links(text);
         println!(
-            "\nBatch download: {}/{} ({:3.0}%)",
-            total_downloads + 1,
-            to_download,
-            ((total_downloads as f32 + 1.) / to_download as f32) * 100.
+            "Collected {post_count: >2} posts from page {current_page: >4}; {total: >4} in total",
+            post_count = page_contents.len(),
+            current_page = page.number,
+            total = targets.len(),
+        );
+        targets.append(&mut page_contents);
+    }
+
+    if targets.is_empty() {
+        println!(
+            "Skipped all {num_pages} pages because {skip} posts had to be skipped.\nOperation completed.",
+            num_pages = res_pages.len()
+        );
+        return Ok(());
+    }
+
+    // Downloads all targets
+    let mut total_downloads: usize = 0;
+    for target in targets.iter() {
+        println!(
+            "\nBatch download: {at}/{of} ({percentage:3.0}%)",
+            at = total_downloads + 1,
+            of = targets.len(),
+            percentage = ((total_downloads as f32 + 1.) / targets.len() as f32) * 100.
         );
 
         // Download the target
-        download_from_url(&target_urls[i], dest, verbosity, json_only).await?;
+        download_from_url(&target.url, dest, verbosity, json_only, true).await?;
 
         // Increment the download count
         total_downloads += 1;
     }
 
-    println!(
-        "\nDownloaded {} of {} targets, (skip={}, limit={})",
-        to_download,
-        target_urls.len(),
-        skip,
-        limit
-    );
+    println!("\nDownloaded all {total_downloads} targeted posts, (skip={skip}, limit={limit})\nOperation completed.",);
 
     Ok(())
+}
+
+/// Like branchless div_ceil but with branches because the std library marks its function as unstable
+fn div_ceil(lhs: usize, rhs: usize) -> usize {
+    lhs / rhs + if lhs % rhs == 0 { 0 } else { 1 }
+}
+
+fn div_ceil_patch(lhs: usize, rhs: usize) -> usize {
+    if lhs != 0 {
+        div_ceil(lhs, rhs)
+    } else {
+        usize::MAX
+    }
 }

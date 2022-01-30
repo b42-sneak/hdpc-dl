@@ -11,15 +11,27 @@ pub struct Metadata<'a> {
 }
 
 #[derive(Debug, Serialize)]
-pub struct Chapter<'a> {
+pub struct Post<'a> {
     pub name: Cow<'a, str>,
     pub url: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PostBuf {
+    pub name: String,
+    pub url: String,
 }
 
 pub struct Ratings {
     pub upvotes: u32,
     pub downvotes: u32,
     pub favorites: u32,
+}
+
+#[derive(Debug)]
+pub struct ResPage<'a> {
+    pub url: &'a str,
+    pub number: u32,
 }
 
 // The data structure for the JSON document to be exported
@@ -79,7 +91,7 @@ pub struct ExportV5<'a> {
     pub metadata: &'a Vec<Metadata<'a>>,
 
     /// A list of chapters (may be empty)
-    pub chapters: Vec<Chapter<'a>>,
+    pub chapters: Vec<Post<'a>>,
 
     /// The URLs of the individual pictures downloaded from the remote host
     pub picture_urls: &'a Vec<&'a str>,

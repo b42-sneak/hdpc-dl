@@ -4,7 +4,7 @@ use html_escape::decode_html_entities;
 use lazy_static::lazy_static;
 use regex::Regex;
 
-use crate::data::{Chapter, Ratings};
+use crate::data::{Post, PostBuf, Ratings, ResPage};
 
 lazy_static! {
     static ref CHAPTERS_RX: Regex = Regex::new(r#"<option (?:selected)? data-url="(.+?)">(.+?)</option>"#).unwrap();
@@ -14,14 +14,27 @@ lazy_static! {
     static ref TITLE_RX: Regex = Regex::new("<title>(.+?) comic porn &ndash; HD Porn Comics</title>").unwrap();
     static ref COMMENTS_RX: Regex = Regex::new(r#"<h3.*?id="comments-title".*?>\s*(.*?)\s*</h3>"#).unwrap();
     static ref POST_ID_RX: Regex = Regex::new(r#"<div id="post-(\d+)"#).unwrap();
+    static ref RES_PAGES_RX: Regex = Regex::new(r#"<option data-url="(.+?)"(?: selected )?>(\d+)</option>"#).unwrap();
+    static ref TARGET_RX: Regex = Regex::new(r#"<a href="([^"]+?)"[^>]*?><h2[^>]*?> ?([^<>]+?)(?: comic porn)</h2> </a>"#).unwrap();
 }
 
-pub fn extract_chapters(text: &str) -> Vec<Chapter> {
+pub fn extract_chapters(text: &str) -> Vec<Post> {
     CHAPTERS_RX
         .captures_iter(text)
-        .map(|caps| Chapter {
+        .map(|caps| Post {
             name: decode_html_entities(caps.get(2).unwrap().as_str()),
             url: caps.get(1).unwrap().as_str(),
+        })
+        .collect()
+}
+
+pub fn extract_target_links(text: String) -> Vec<PostBuf> {
+    TARGET_RX
+        .captures_iter(&text)
+        .map(|caps| PostBuf {
+            // TODO try to get rid of the heap allocations
+            name: decode_html_entities(caps.get(2).unwrap().as_str()).to_string(),
+            url: caps.get(1).unwrap().as_str().to_string(),
         })
         .collect()
 }
@@ -63,4 +76,15 @@ pub fn extract_post_id(text: &str) -> Option<u64> {
         .as_str()
         .parse()
         .ok()
+}
+
+/// Extracts the links and numbers of the result pages
+pub fn extract_res_page_links(text: &str) -> Vec<ResPage> {
+    RES_PAGES_RX
+        .captures_iter(text)
+        .map(|page| ResPage {
+            url: page.get(1).unwrap().as_str(),
+            number: page.get(2).unwrap().as_str().parse().unwrap(),
+        })
+        .collect()
 }

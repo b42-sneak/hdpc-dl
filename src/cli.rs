@@ -93,6 +93,7 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
                 matches.value_of("destination").unwrap(),
                 matches.occurrences_of("v"),
                 matches.is_present("json only"),
+                false,
             )
             .await
         }
