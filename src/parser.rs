@@ -12,7 +12,7 @@ lazy_static! {
     static ref IMAGE_RX: Regex = Regex::new(r#"<a href="(https://[^<>" ]+?\.hdporncomics\.com/uploads/.+?\.jpg)"#).unwrap();
     static ref RATINGS_RX: Regex = Regex::new(r#"<span id="upVotes".*?> (\d+) </span>.*?<span id="downVotes".*?> (\d+) </span>.*?<span id="favorite-count".*?> ?(\d+) ?</span>"#).unwrap();
     static ref TITLE_RX: Regex = Regex::new("<title>(.+?) comic porn &ndash; HD Porn Comics</title>").unwrap();
-    static ref COMMENTS_RX: Regex = Regex::new(r#"<h3 id="comments-title".*?> ?(\d+) Comments</h3>"#).unwrap();
+    static ref COMMENTS_RX: Regex = Regex::new(r#"<h3.*?id="comments-title".*?>\s*(.*?)\s*</h3>"#).unwrap();
     static ref POST_ID_RX: Regex = Regex::new(r#"<div id="post-(\d+)"#).unwrap();
 }
 
