@@ -1,3 +1,5 @@
+use std::{thread, time::Duration};
+
 use crate::{
     constants,
     data::*,
@@ -225,6 +227,8 @@ pub async fn crawl_download(
     limit: usize,
     skip: usize,
     paging: bool,
+    max_retries: usize,
+    no_download: bool,
 ) -> Result<(), anyhow::Error> {
     // Create a client to make requests with
     let client = reqwest::Client::new();
@@ -269,6 +273,38 @@ pub async fn crawl_download(
             total = targets.len(),
         );
         targets.append(&mut page_contents);
+        // thread::sleep(Duration::from_secs(3));
+    }
+
+    if no_download {
+        let export = CrawlResultV5 {
+            hdpc_dl_version: 5,
+            program_version: constants::VERSION,
+            source_url: url,
+            download_date: Utc::now().to_rfc3339(),
+            posts: &targets,
+        };
+
+        // Serialize the data to JSON
+        let serialized = serde_json::to_string_pretty(&export).unwrap();
+
+        // Build-a-path
+        let path = dest.to_owned();
+
+        // Create the destination folder if it doesn't exist
+        std::fs::create_dir_all(std::path::Path::new(&path))
+            .expect("Failed to create directory.\nTry to specify another path.\n");
+
+        // The JSON path
+        let json_path = path.clone() + "/crawl_results.json";
+
+        // Write the JSON file to disk
+        std::fs::write(&json_path, serialized)
+            .expect("Failed to create the JSON file.\nTry to specify another path.\n");
+
+        // Log successful JSON file creation
+        println!("Created JSON file with crawl results at \"{}\"", &json_path);
+        return Ok(());
     }
 
     if targets.is_empty() {
@@ -289,8 +325,21 @@ pub async fn crawl_download(
             percentage = ((total_downloads as f32 + 1.) / targets.len() as f32) * 100.
         );
 
+        let mut retries = 0;
+
         // Download the target
-        download_from_url(&target.url, dest, verbosity, json_only, true).await?;
+        while let Err(e) = download_from_url(&target.url, dest, verbosity, json_only, true).await {
+            retries += 1;
+
+            if retries > max_retries {
+                return Err(e);
+            }
+
+            println!(
+                "Couldn't extract title; waiting 10 seconds before retry ({retries}/{max_retries})"
+            );
+            thread::sleep(Duration::from_secs(10));
+        }
 
         // Increment the download count
         total_downloads += 1;

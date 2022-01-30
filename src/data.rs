@@ -28,10 +28,28 @@ pub struct Ratings {
     pub favorites: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ResPage<'a> {
     pub url: &'a str,
     pub number: u32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CrawlResultV5<'a> {
+    /// The version of the JSON document
+    pub hdpc_dl_version: i32,
+
+    /// The version of this software used for downloading
+    pub program_version: &'static str,
+
+    /// The title of the target
+    pub source_url: &'a str,
+
+    /// An RFC 3339 timestamp of the time this was downloaded
+    pub download_date: String,
+
+    /// The list of crawled posts
+    pub posts: &'a Vec<PostBuf>,
 }
 
 // The data structure for the JSON document to be exported

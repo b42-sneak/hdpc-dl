@@ -70,10 +70,19 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
             .short("s")
             .long("skip")
             .default_value("0"),
+          Arg::with_name("retries")
+            .help("How often to retry if a download fails")
+            .short("r")
+            .long("retries")
+            .default_value("0"),
           Arg::with_name("paging")
             .help("Tries to continue on the next page withing the download limit & offset")
             .short("p")
             .long("paging"),
+          Arg::with_name("no-download")
+            .help("Exports the crawl result without downloading anything else")
+            .short("n")
+            .long("no-download"),
         ]),
     );
 
@@ -110,6 +119,8 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
                 value_t!(sub_matches.value_of("limit"), usize).unwrap_or_else(|e| e.exit()),
                 value_t!(sub_matches.value_of("skip"), usize).unwrap_or_else(|e| e.exit()),
                 sub_matches.is_present("paging"),
+                value_t!(sub_matches.value_of("retries"), usize).unwrap_or_else(|e| e.exit()),
+                sub_matches.is_present("no-download"),
             )
             .await
         }

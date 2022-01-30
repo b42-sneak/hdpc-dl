@@ -15,7 +15,7 @@ lazy_static! {
     static ref COMMENTS_RX: Regex = Regex::new(r#"<h3.*?id="comments-title".*?>\s*(.*?)\s*</h3>"#).unwrap();
     static ref POST_ID_RX: Regex = Regex::new(r#"<div id="post-(\d+)"#).unwrap();
     static ref RES_PAGES_RX: Regex = Regex::new(r#"<option data-url="(.+?)"(?: selected )?>(\d+)</option>"#).unwrap();
-    static ref TARGET_RX: Regex = Regex::new(r#"<a href="([^"]+?)"[^>]*?><h2[^>]*?> ?([^<>]+?)(?: comic porn)</h2> </a>"#).unwrap();
+    static ref TARGET_RX: Regex = Regex::new(r#"<a href="([^"]+?)"[^>]*?><h2[^>]*?> ?([^<>]+?)(?: comic porn| &#8211; \w+ free Porn Comic| \w+ Comic| Hentai).*?</h2> </a>"#).unwrap();
 }
 
 pub fn extract_chapters(text: &str) -> Vec<Post> {
