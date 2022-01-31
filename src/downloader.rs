@@ -8,6 +8,7 @@ use crate::{
         extract_ratings, extract_res_page_links, extract_target_links, extract_title,
     },
 };
+use anyhow::Context;
 use chrono::prelude::*;
 use scraper::{Html, Selector};
 use tokio::{fs, io::AsyncWriteExt};
@@ -49,16 +50,16 @@ pub async fn download_from_url(
     // TODO Views, likes and dislikes are only available using another POST request
 
     // Extract the title
-    let title = extract_title(&text).expect("Couldn't extract title");
+    let title = extract_title(&text).context("Couldn't extract title")?;
 
     // Extract the ratings (upvotes, downvotes, and favorites)
-    let ratings = extract_ratings(&text).expect("Couldn't extract ratings");
+    let ratings = extract_ratings(&text).context("Couldn't extract ratings")?;
 
     // TODO handle chapters (part 1,2,3,...)
 
-    let comment_count = extract_comment_count(&text).expect("Couldn't extract comment count");
+    let comment_count = extract_comment_count(&text).context("Couldn't extract comment count")?;
 
-    let post_id = extract_post_id(&text).expect("Couldn't extract post id");
+    let post_id = extract_post_id(&text).context("Couldn't extract post id")?;
 
     let chapters = extract_chapters(&text);
 
@@ -114,14 +115,14 @@ pub async fn download_from_url(
 
     // Create the destination folder if it doesn't exist
     std::fs::create_dir_all(std::path::Path::new(&path))
-        .expect("Failed to create directory.\nTry to specify another path.\n");
+        .context("Failed to create directory.\nTry to specify another path.\n")?;
 
     // The JSON path
     let json_path = path.clone() + "/hdpc-info.json";
 
     // Write the JSON file to disk
     std::fs::write(&json_path, serialized)
-        .expect("Failed to create the JSON file.\nTry to specify another path.\n");
+        .context("Failed to create the JSON file.\nTry to specify another path.\n")?;
 
     // Log successful JSON file creation
     println!("{padding}Created JSON file at \"{}\"", &json_path);
@@ -228,7 +229,7 @@ pub async fn crawl_download(
     skip: usize,
     paging: bool,
     max_retries: usize,
-    no_download: bool,
+    no_download: Option<&str>,
 ) -> Result<(), anyhow::Error> {
     // Create a client to make requests with
     let client = reqwest::Client::new();
@@ -248,6 +249,8 @@ pub async fn crawl_download(
         }
         res_pages
     };
+
+    println!("Query returned {} result pages", res_pages.len());
 
     // Calculate the number of available posts & build a target list
     let mut targets = vec![];
@@ -276,7 +279,7 @@ pub async fn crawl_download(
         // thread::sleep(Duration::from_secs(3));
     }
 
-    if no_download {
+    if let Some(crawl_export_name) = no_download {
         let export = CrawlResultV5 {
             hdpc_dl_version: 5,
             program_version: constants::VERSION,
@@ -293,17 +296,18 @@ pub async fn crawl_download(
 
         // Create the destination folder if it doesn't exist
         std::fs::create_dir_all(std::path::Path::new(&path))
-            .expect("Failed to create directory.\nTry to specify another path.\n");
+            .context("Failed to create directory.\nTry to specify another path.\n")?;
 
         // The JSON path
-        let json_path = path.clone() + "/crawl_results.json";
+        let json_path = path.clone() + "/" + crawl_export_name + "_crawl_results.json";
 
         // Write the JSON file to disk
         std::fs::write(&json_path, serialized)
-            .expect("Failed to create the JSON file.\nTry to specify another path.\n");
+            .context("Failed to create the JSON file.\nTry to specify another path.\n")?;
 
         // Log successful JSON file creation
         println!("Created JSON file with crawl results at \"{}\"", &json_path);
+        println!("from path {url}");
         return Ok(());
     }
 

@@ -368,6 +368,7 @@ dependencies = [
  "scraper",
  "serde",
  "serde_json",
+ "str_overlap",
  "tokio",
 ]
 
@@ -1223,6 +1224,15 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
+
+[[package]]
+name = "str_overlap"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70a2d94875a24433acafbd080b2d100f7d5fc8f880ad34fc553211cf5a8b0b88"
+dependencies = [
+ "autocfg",
+]
 
 [[package]]
 name = "string_cache"

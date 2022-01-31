@@ -3,8 +3,9 @@ use std::borrow::Cow;
 use html_escape::decode_html_entities;
 use lazy_static::lazy_static;
 use regex::Regex;
+use str_overlap::Overlap;
 
-use crate::data::{Post, PostBuf, Ratings, ResPage};
+use crate::data::{Post, PostBuf, Ratings, ResPage, TagLike};
 
 lazy_static! {
     static ref CHAPTERS_RX: Regex = Regex::new(r#"<option (?:selected)? data-url="(.+?)">(.+?)</option>"#).unwrap();
@@ -16,6 +17,7 @@ lazy_static! {
     static ref POST_ID_RX: Regex = Regex::new(r#"<div id="post-(\d+)"#).unwrap();
     static ref RES_PAGES_RX: Regex = Regex::new(r#"<option data-url="(.+?)"(?: selected )?>(\d+)</option>"#).unwrap();
     static ref TARGET_RX: Regex = Regex::new(include_str!("./regex/target.rx")).unwrap();
+    static ref TAG_LIKE_RX: Regex = Regex::new(r#"<a href="([^"]+)" rel="tag">([^<]+)</a>"#).unwrap();
 }
 
 pub fn extract_chapters(text: &str) -> Vec<Post> {
@@ -78,13 +80,72 @@ pub fn extract_res_page_links(text: &str) -> Vec<ResPage> {
         .collect()
 }
 
+/// Converts an HTML-response String into useful data using a lot of regex-matching
 pub fn extract_target_links(text: String) -> Vec<PostBuf> {
     TARGET_RX
         .captures_iter(&text)
-        .map(|caps| PostBuf {
-            // TODO try to get rid of the heap allocations
-            name: decode_html_entities(caps.get(2).unwrap().as_str()).to_string(),
-            url: caps.get(1).unwrap().as_str().to_string(),
+        .map(|caps| {
+            let name = caps
+                .name("title_main")
+                .unwrap()
+                .as_str()
+                .overlap_start(caps.name("title_alt").unwrap().as_str());
+
+            let get_num = |name| {
+                caps.name(name)
+                    .unwrap()
+                    .as_str()
+                    .parse_with_suffix()
+                    .unwrap()
+            };
+
+            PostBuf {
+                // TODO try to get rid of the heap allocations
+                post_id: caps.name("post_id").unwrap().as_str().parse().unwrap(),
+                name: decode_html_entities(name).to_string(),
+                url: caps.get(1).unwrap().as_str().to_string(),
+                views: get_num("views"),
+                upvotes: get_num("upvotes"),
+                downvotes: get_num("downvotes"),
+                meta_tags: caps
+                    .name("tags")
+                    .unwrap()
+                    .as_str()
+                    .to_string()
+                    .split_ascii_whitespace()
+                    .map(|s| s.to_string()) // TODO don't allocate like mad
+                    .collect(),
+                rendered_tags: TAG_LIKE_RX
+                    .captures_iter(caps.get(0).unwrap().as_str())
+                    .map(|tag| TagLike {
+                        href: tag.get(1).unwrap().as_str().to_string(),
+                        text: tag.get(2).unwrap().as_str().to_string(),
+                    })
+                    .collect(),
+            }
         })
         .collect()
+}
+
+trait SuffixParse {
+    fn parse_with_suffix(&self) -> anyhow::Result<u32>;
+}
+
+impl SuffixParse for &str {
+    fn parse_with_suffix(&self) -> anyhow::Result<u32> {
+        let unwrap_wrap = if self.ends_with("k") || self.ends_with("K") {
+            self[..self.len() - 1]
+                .parse()
+                .and_then(|num: f32| Ok((num * 1_000.0) as u32))?
+        } else if self.ends_with("m") || self.ends_with("M") {
+            self[..self.len() - 1]
+                .parse()
+                .and_then(|num: f32| Ok((num * 1_000_000.0) as u32))?
+        } else {
+            self.parse()?
+        };
+
+        // Unwrap the result and wrap again, because... (type-)reasons?
+        Ok(unwrap_wrap)
+    }
 }

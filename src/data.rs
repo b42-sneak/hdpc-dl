@@ -18,8 +18,21 @@ pub struct Post<'a> {
 
 #[derive(Debug, Serialize)]
 pub struct PostBuf {
+    pub post_id: u32,
     pub name: String,
     pub url: String,
+    pub views: u32,
+    pub upvotes: u32,
+    pub downvotes: u32,
+    pub meta_tags: Vec<String>,
+    pub rendered_tags: Vec<TagLike>,
+}
+
+/// A tag-like marker of a post in a search result page
+#[derive(Debug, Serialize)]
+pub struct TagLike {
+    pub href: String,
+    pub text: String,
 }
 
 pub struct Ratings {
