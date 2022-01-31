@@ -103,7 +103,7 @@ pub fn extract_target_links(text: String) -> Vec<PostBuf> {
                 // TODO try to get rid of the heap allocations
                 post_id: caps.name("post_id").unwrap().as_str().parse().unwrap(),
                 name: decode_html_entities(name).to_string(),
-                url: caps.get(1).unwrap().as_str().to_string(),
+                url: caps.name("url").unwrap().as_str().to_string(),
                 views: get_num("views"),
                 upvotes: get_num("upvotes"),
                 downvotes: get_num("downvotes"),
