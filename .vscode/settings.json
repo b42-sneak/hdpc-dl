@@ -10,5 +10,6 @@
     "semver",
     "tokio",
     "Versionless"
-  ]
+  ],
+  "[plaintext]": { "editor.wordWrap": "on" }
 }

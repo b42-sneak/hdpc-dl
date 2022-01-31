@@ -15,7 +15,7 @@ lazy_static! {
     static ref COMMENTS_RX: Regex = Regex::new(r#"<h3.*?id="comments-title".*?>\s*(.*?)\s*</h3>"#).unwrap();
     static ref POST_ID_RX: Regex = Regex::new(r#"<div id="post-(\d+)"#).unwrap();
     static ref RES_PAGES_RX: Regex = Regex::new(r#"<option data-url="(.+?)"(?: selected )?>(\d+)</option>"#).unwrap();
-    static ref TARGET_RX: Regex = Regex::new(r#"<a href="([^"]+?)"[^>]*?><h2[^>]*?> ?([^<>]+?)(?: comic porn| &#8211; \w+ free Porn Comic| \w+ Comic| Hentai).*?</h2> </a>"#).unwrap();
+    static ref TARGET_RX: Regex = Regex::new(include_str!("./regex/target.rx")).unwrap();
 }
 
 pub fn extract_chapters(text: &str) -> Vec<Post> {
@@ -24,17 +24,6 @@ pub fn extract_chapters(text: &str) -> Vec<Post> {
         .map(|caps| Post {
             name: decode_html_entities(caps.get(2).unwrap().as_str()),
             url: caps.get(1).unwrap().as_str(),
-        })
-        .collect()
-}
-
-pub fn extract_target_links(text: String) -> Vec<PostBuf> {
-    TARGET_RX
-        .captures_iter(&text)
-        .map(|caps| PostBuf {
-            // TODO try to get rid of the heap allocations
-            name: decode_html_entities(caps.get(2).unwrap().as_str()).to_string(),
-            url: caps.get(1).unwrap().as_str().to_string(),
         })
         .collect()
 }
@@ -85,6 +74,17 @@ pub fn extract_res_page_links(text: &str) -> Vec<ResPage> {
         .map(|page| ResPage {
             url: page.get(1).unwrap().as_str(),
             number: page.get(2).unwrap().as_str().parse().unwrap(),
+        })
+        .collect()
+}
+
+pub fn extract_target_links(text: String) -> Vec<PostBuf> {
+    TARGET_RX
+        .captures_iter(&text)
+        .map(|caps| PostBuf {
+            // TODO try to get rid of the heap allocations
+            name: decode_html_entities(caps.get(2).unwrap().as_str()).to_string(),
+            url: caps.get(1).unwrap().as_str().to_string(),
         })
         .collect()
 }
