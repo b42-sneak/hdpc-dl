@@ -229,7 +229,7 @@ pub async fn crawl_download(
     skip: usize,
     paging: bool,
     max_retries: usize,
-    no_download: Option<&str>,
+    no_download: bool,
 ) -> Result<(), anyhow::Error> {
     // Create a client to make requests with
     let client = reqwest::Client::new();
@@ -279,35 +279,39 @@ pub async fn crawl_download(
         // thread::sleep(Duration::from_secs(3));
     }
 
-    if let Some(crawl_export_name) = no_download {
-        let export = CrawlResultV5 {
-            hdpc_dl_version: 5,
-            program_version: constants::VERSION,
-            source_url: url,
-            download_date: Utc::now().to_rfc3339(),
-            posts: &targets,
-        };
+    let export = CrawlResultV5 {
+        hdpc_dl_version: 5,
+        program_version: constants::VERSION,
+        source_url: url,
+        download_date: Utc::now().to_rfc3339(),
+        posts: &targets,
+    };
 
-        // Serialize the data to JSON
-        let serialized = serde_json::to_string_pretty(&export).unwrap();
+    // Serialize the data to JSON
+    let serialized = serde_json::to_string_pretty(&export).unwrap();
 
-        // Build-a-path
-        let path = dest.to_owned();
+    // Build-a-path
+    let path = dest.to_owned();
 
-        // Create the destination folder if it doesn't exist
-        std::fs::create_dir_all(std::path::Path::new(&path))
-            .context("Failed to create directory.\nTry to specify another path.\n")?;
+    // Create the destination folder if it doesn't exist
+    std::fs::create_dir_all(std::path::Path::new(&path))
+        .context("Failed to create directory.\nTry to specify another path.\n")?;
 
-        // The JSON path
-        let json_path = path.clone() + "/" + crawl_export_name + "_crawl_results.json";
+    // TODO allow users to specify the name
+    let crawl_export_name = Utc::now().to_rfc3339().replace(" ", "_");
 
-        // Write the JSON file to disk
-        std::fs::write(&json_path, serialized)
-            .context("Failed to create the JSON file.\nTry to specify another path.\n")?;
+    // The JSON path
+    let json_path = path.clone() + "/" + &crawl_export_name + "_crawl_results.json";
 
-        // Log successful JSON file creation
-        println!("Created JSON file with crawl results at \"{}\"", &json_path);
-        println!("from path {url}");
+    // Write the JSON file to disk
+    std::fs::write(&json_path, serialized)
+        .context("Failed to create the JSON file.\nTry to specify another path.\n")?;
+
+    // Log successful JSON file creation
+    println!("Created JSON file with crawl results at \"{}\"", &json_path);
+    println!("from path {url}");
+
+    if no_download {
         return Ok(());
     }
 

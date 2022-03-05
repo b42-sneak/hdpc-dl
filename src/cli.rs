@@ -1,4 +1,4 @@
-use crate::{constants, downloader};
+use crate::{constants, downloader, filters};
 use clap::{value_t, App, AppSettings, Arg, SubCommand};
 
 /// Parse and execute the command specified via the CLI
@@ -83,8 +83,12 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
             .help("Exports the crawl result without downloading anything else")
             .short("n")
             .long("no-download")
-            .default_value(""),
         ]),
+    )
+    .subcommand(
+      SubCommand::with_name("get-filters")
+        .about("Downloads the filter api data and stores it in JSON files")
+        .after_help(constants::LICENSE),
     );
 
     // Parse the CLI arguments
@@ -121,10 +125,12 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
                 value_t!(sub_matches.value_of("skip"), usize).unwrap_or_else(|e| e.exit()),
                 sub_matches.is_present("paging"),
                 value_t!(sub_matches.value_of("retries"), usize).unwrap_or_else(|e| e.exit()),
-                sub_matches.value_of("no-download"),
+                sub_matches.is_present("no-download"),
             )
             .await
         }
+
+        Some("get-filters") => filters::get_filters().await,
 
         _ => {
             println!("Something went very wrong");

@@ -2,6 +2,7 @@ mod cli;
 mod constants;
 mod data;
 mod downloader;
+mod filters;
 mod parser;
 
 #[tokio::main]

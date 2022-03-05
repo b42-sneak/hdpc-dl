@@ -10,3 +10,5 @@ pub const NAME: &str = "HDPC Downloader";
 
 /// The number of targets per (full) results page
 pub const TARGETS_PER_PAGE: usize = 21;
+
+pub const API_FILTER_PATH: &str = "https://hdporncomics.com/?rest_route=/api/v1/filter";
