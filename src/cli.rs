@@ -41,12 +41,14 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
     //
     // One
     .subcommand(
-      SubCommand::with_name("one")
+      SubCommand::with_name("get")
+        .alias("one")
         .about("Downloads one comic")
         .after_help(constants::LICENSE)
         .args(&[Arg::with_name("URL")
           .help("Sets the URL of the comic to download")
           .required(true)
+          .multiple(true)
           .index(1)]),
     )
     //
@@ -98,12 +100,12 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
     println!("{}\n", constants::LICENSE);
 
     match matches.subcommand_name() {
-        Some("one") => {
-            let sub_matches = matches.subcommand_matches("one").unwrap();
+        Some("get") => {
+            let sub_matches = matches.subcommand_matches("get").unwrap();
 
             // Call the download function
-            downloader::download_from_url(
-                sub_matches.value_of("URL").unwrap(),
+            downloader::download_from_urls(
+                sub_matches.values_of("URL").unwrap().collect::<Vec<_>>(),
                 matches.value_of("destination").unwrap(),
                 matches.occurrences_of("v"),
                 matches.is_present("json only"),

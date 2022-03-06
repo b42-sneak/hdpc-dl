@@ -14,6 +14,23 @@ use scraper::{Html, Selector};
 use tokio::{fs, io::AsyncWriteExt};
 
 /// Downloads a comic given a URL and a destination
+pub async fn download_from_urls(
+    urls: Vec<&str>,
+    dest: &str,
+    verbosity: u64,
+    json_only: bool,
+    use_padding: bool,
+) -> Result<(), anyhow::Error> {
+    let max = urls.len();
+    for (n, url) in urls.iter().enumerate().map(|(n, url)| (n + 1, url)) {
+        println!("Download {n:02}/{max:02}");
+        download_from_url(url, dest, verbosity, json_only, use_padding).await?;
+    }
+    println!("Download done.");
+
+    Ok(())
+}
+
 pub async fn download_from_url(
     url: &str,
     dest: &str,
@@ -24,8 +41,8 @@ pub async fn download_from_url(
     let padding = if use_padding { "  " } else { "" };
 
     // Inform the user about the actions to be taken
-    println!("{padding}Destination: {}", dest);
-    println!("{padding}URL: {}", url);
+    println!("{padding}Destination: {dest}");
+    println!("{padding}URL: {url}");
 
     // Create a client to make requests with
     let client = reqwest::Client::new();
