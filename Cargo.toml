@@ -1,6 +1,6 @@
 [package]
 name = "hdpc-dl"
-version = "2.6.3"
+version = "2.7.0"
 authors = ["b42-sneak <59374651+b42-sneak@users.noreply.github.com>"]
 edition = "2021"
 license = "AGPL-3.0-or-later"
