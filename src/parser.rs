@@ -5,19 +5,64 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use str_overlap::Overlap;
 
-use crate::data::{Post, PostBuf, Ratings, ResPage, TagLike};
+use crate::data::{
+    InfoboxRow, Post, PostBuf, Ratings, RawInfoBoxRow, ResPage, TagLike, TagLikeBuf,
+};
+
+// Artist
+// Group
+// Upload date
 
 lazy_static! {
     static ref CHAPTERS_RX: Regex = Regex::new(r#"<option (?:selected)? data-url="(.+?)">(.+?)</option>"#).unwrap();
     // static ref IMAGE_RX: Regex = Regex::new(r#"<a href="(https://image\.hdporncomics\.com/uploads/.+?\.jpg)" itemprop="contentUrl""#).unwrap();
     static ref IMAGE_RX: Regex = Regex::new(r#"<a href="(https://[^<>" ]+?\.hdporncomics\.com/uploads/.+?\.jpg)"#).unwrap();
     static ref RATINGS_RX: Regex = Regex::new(r#"<span id="upVotes".*?> (\d+) </span>.*?<span id="downVotes".*?> (\d+) </span>.*?<span id="favorite-count".*?> ?(\d+) ?</span>"#).unwrap();
-    static ref TITLE_RX: Regex = Regex::new("<title>(.+?) (?:comic porn )?&ndash; HD Porn Comics</title>").unwrap();
+    static ref TITLE_RX: Regex = Regex::new("<title>(.+?) (?:comic porn )?(?:&ndash;|-) HD Porn Comics</title>").unwrap();
     static ref COMMENTS_RX: Regex = Regex::new(r#"<h3.*?id="comments-title".*?>\s*(.*?)\s*</h3>"#).unwrap();
     static ref POST_ID_RX: Regex = Regex::new(r#"<div id="post-(\d+)"#).unwrap();
     static ref RES_PAGES_RX: Regex = Regex::new(r#"<option data-url="(.+?)"(?: selected )?>(\d+)</option>"#).unwrap();
     static ref TARGET_RX: Regex = Regex::new(include_str!("./regex/target.rx")).unwrap();
-    static ref TAG_LIKE_RX: Regex = Regex::new(r#"<a href="([^"]+)" rel="tag">([^<]+)</a>"#).unwrap();
+    static ref TAG_LIKE_RX: Regex = Regex::new(r#"<span class="scrolltaxonomy-item"><a href="([^"]+)" rel="tag">([^<]+)</a></span>"#).unwrap();
+    static ref INFOBOX_LINE_RX: Regex = Regex::new(r#"<div class="flex items-center"> <span class="text-gray-400 whitespace-nowrap">(.+?) : ?</span> (.+?)</div>"#).unwrap();
+    static ref INFOBOX_TEXT_RX: Regex = Regex::new(r#"<span class="ml-4 ([^"]+)"> ?(.*?) ?</span>"#).unwrap();
+}
+
+pub fn extract_from_infobox_row(row: RawInfoBoxRow) -> InfoboxRow {
+    let tag_like_vec = TAG_LIKE_RX
+        .captures_iter(&row.html)
+        .map(|caps| TagLike {
+            href: caps.get(1).unwrap().as_str(),
+            text: caps.get(2).unwrap().as_str(),
+        })
+        .collect::<Vec<_>>();
+
+    if !tag_like_vec.is_empty() {
+        return InfoboxRow::TagLike {
+            name: row.name,
+            tags: tag_like_vec,
+        };
+    }
+
+    if let Some(caps) = INFOBOX_TEXT_RX.captures_iter(row.html).next() {
+        return InfoboxRow::Text {
+            name: row.name,
+            class_name: caps.get(1).unwrap().as_str(),
+            text: caps.get(2).map(|text| text.as_str()),
+        };
+    }
+
+    InfoboxRow::Raw(row)
+}
+
+pub fn extract_info_box_rows(text: &str) -> Vec<RawInfoBoxRow> {
+    INFOBOX_LINE_RX
+        .captures_iter(text)
+        .map(|caps| RawInfoBoxRow {
+            name: caps.get(1).unwrap().as_str(),
+            html: caps.get(2).unwrap().as_str(),
+        })
+        .collect()
 }
 
 pub fn extract_chapters(text: &str) -> Vec<Post> {
@@ -117,7 +162,7 @@ pub fn extract_target_links(text: String) -> Vec<PostBuf> {
                     .collect(),
                 rendered_tags: TAG_LIKE_RX
                     .captures_iter(caps.get(0).unwrap().as_str())
-                    .map(|tag| TagLike {
+                    .map(|tag| TagLikeBuf {
                         href: tag.get(1).unwrap().as_str().to_string(),
                         text: tag.get(2).unwrap().as_str().to_string(),
                     })

@@ -4,13 +4,13 @@ use crate::{
     constants,
     data::*,
     parser::{
-        extract_chapters, extract_comment_count, extract_image_urls, extract_post_id,
-        extract_ratings, extract_res_page_links, extract_target_links, extract_title,
+        extract_chapters, extract_comment_count, extract_from_infobox_row, extract_image_urls,
+        extract_info_box_rows, extract_post_id, extract_ratings, extract_res_page_links,
+        extract_target_links, extract_title,
     },
 };
 use anyhow::Context;
 use chrono::prelude::*;
-use scraper::{Html, Selector};
 use tokio::{fs, io::AsyncWriteExt};
 
 /// Downloads a comic given a URL and a destination
@@ -38,6 +38,7 @@ pub async fn download_from_url(
     json_only: bool,
     use_padding: bool,
 ) -> Result<(), anyhow::Error> {
+    // TODO Views, likes and dislikes are only available using another POST request
     let padding = if use_padding { "  " } else { "" };
 
     // Inform the user about the actions to be taken
@@ -50,29 +51,14 @@ pub async fn download_from_url(
     // Request the HTML file from the server
     let text = client.get(url).send().await?.text().await?.to_string();
 
-    // Parse the HTML from the response
-    // TODO remove this (and the entire HTML parsing process as well)
-    let document = Html::parse_document(&text);
-
     // The URLs of the pictures to be downloaded
     let picture_urls = extract_image_urls(&text);
-
-    // The metadata to be extracted
-    let mut metadata: Vec<Metadata> = Vec::new();
-
-    // The selectors for the strings to be extracted
-    let row_selector = Selector::parse("#infoBox > div.items-center").unwrap();
-    let span_selector = Selector::parse("span").unwrap();
-
-    // TODO Views, likes and dislikes are only available using another POST request
 
     // Extract the title
     let title = extract_title(&text).context("Couldn't extract title")?;
 
     // Extract the ratings (upvotes, downvotes, and favorites)
     let ratings = extract_ratings(&text).context("Couldn't extract ratings")?;
-
-    // TODO handle chapters (part 1,2,3,...)
 
     let comment_count = extract_comment_count(&text).context("Couldn't extract comment count")?;
 
@@ -81,35 +67,14 @@ pub async fn download_from_url(
     let chapters = extract_chapters(&text);
 
     // Extract all metadata
-    // TODO avoid the use of HTML parsing here if possible
-    for row in document.select(&row_selector) {
-        let mut columns = row.select(&span_selector);
-
-        let name = match columns.next() {
-            Some(content) => remove_colon(content.text().next().unwrap_or("no-text-here").trim()),
-            None => "nothing-to-be-seen-here",
-        };
-
-        if name == "*" {
-            continue;
-        };
-
-        let mut entries = Vec::new();
-
-        for column in columns {
-            for content in column.text() {
-                if content.trim() != "" {
-                    entries.push(content.trim());
-                }
-            }
-        }
-
-        metadata.push(Metadata { name, entries });
-    }
+    let info_rows = extract_info_box_rows(&text)
+        .into_iter()
+        .map(extract_from_infobox_row)
+        .collect();
 
     // Fill the data structure for the JSON document to be exported
-    let data = ExportV5 {
-        hdpc_dl_version: 5,
+    let data = ExportV6 {
+        hdpc_dl_version: 6,
         program_version: constants::VERSION,
         post_id,
         title: &title,
@@ -119,7 +84,7 @@ pub async fn download_from_url(
         comment_count,
         download_date: Utc::now().to_rfc3339(),
         source_url: url,
-        metadata: &metadata,
+        metadata: &info_rows,
         chapters,
         picture_urls: &picture_urls,
     };
@@ -227,15 +192,6 @@ pub async fn download_from_url(
     Ok(())
 }
 
-/// Removes the space and the colon from the end of a string slice
-fn remove_colon(s: &str) -> &str {
-    if s.len() < 2 || s[s.len() - 2..] != *" :" {
-        s
-    } else {
-        &s[..s.len() - 2]
-    }
-}
-
 /// Crawls an entire search results page and downloads everything
 pub async fn crawl_download(
     url: &str,
@@ -297,7 +253,7 @@ pub async fn crawl_download(
     }
 
     let export = CrawlResultV5 {
-        hdpc_dl_version: 5,
+        hdpc_dl_version: 6,
         program_version: constants::VERSION,
         source_url: url,
         download_date: Utc::now().to_rfc3339(),

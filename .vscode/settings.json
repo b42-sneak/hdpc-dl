@@ -8,6 +8,7 @@
     "itemprop",
     "ndash",
     "reqwest",
+    "scrolltaxonomy",
     "semver",
     "tokio",
     "Versionless"
