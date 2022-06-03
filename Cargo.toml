@@ -17,7 +17,7 @@ include = ["/README.md", "/LICENSE.md", "/Cargo.toml", "/Cargo.lock", "/src"]
 reqwest = { version = "0.11.10", features = ["json"] }
 scraper = "0.12.0"
 clap = "3.1.18"
-tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "1.18.2", features = ["full"] }
 anyhow = "1.0.32"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
