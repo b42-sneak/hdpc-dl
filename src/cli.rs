@@ -1,5 +1,5 @@
 use crate::{constants, downloader, filters};
-use clap::{value_t, App, AppSettings, Arg, SubCommand};
+use clap::{Arg, Command};
 
 /// Parse and execute the command specified via the CLI
 pub async fn exec_cli() -> Result<(), anyhow::Error> {
@@ -10,85 +10,82 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
     let pwd = temp.to_str().unwrap();
 
     // The app definition
-    let app = App::new(constants::NAME)
+    let app = Command::new(constants::NAME)
     .version(constants::VERSION)
     .author("b42-sneak <GitHub @b42-sneak>")
     .about("Downloads comics from HDPC")
     .after_help(constants::LICENSE)
-    .settings(&[
-      AppSettings::SubcommandRequiredElseHelp,
-      AppSettings::DisableHelpSubcommand,
-      AppSettings::GlobalVersion,
-      AppSettings::VersionlessSubcommands,
-    ])
+    .subcommand_required(true)
+    .disable_help_subcommand(true)
+    .propagate_version(true)
     //
     // Main args
     .args(&[
-      Arg::with_name("destination")
+      Arg::new("destination")
         .help("Sets the download destination path")
         .default_value(pwd)
-        .short("d")
+        .short('d')
         .long("destination"),
-      Arg::with_name("json only")
+      Arg::new("json only")
         .help("Only generate the JSON file")
-        .short("j")
+        .short('j')
         .long("json-only"),
-      Arg::with_name("v")
-        .short("v")
-        .multiple(true)
+      Arg::new("v")
+        .short('v')
+        .multiple_occurrences(true)
         .help("Sets the level of verbosity: 1 for file names, 2 for percentage decimals"),
     ])
     //
     // One
     .subcommand(
-      SubCommand::with_name("get")
+      Command::new("get")
         .alias("one")
         .about("Downloads one comic")
         .after_help(constants::LICENSE)
-        .args(&[Arg::with_name("URL")
+        .args(&[Arg::new("URL")
           .help("Sets the URL of the comic to download")
           .required(true)
-          .multiple(true)
+          .multiple_values(true)
           .index(1)]),
     )
     //
     // Crawl
     .subcommand(
-      SubCommand::with_name("crawl")
+      Command::new("crawl")
         .about("Finds all comics on a URL and downloads them all")
         .after_help(constants::LICENSE)
         .args(&[
-          Arg::with_name("URL")
+          Arg::new("URL")
             .help("Sets the URL of the page to be crawled")
             .required(true)
             .index(1),
-          Arg::with_name("limit")
+          Arg::new("limit")
             .help("Limit to n finding(s) to be downloaded")
-            .short("l")
+            .short('l')
             .long("limit")
             .default_value("0"),
-          Arg::with_name("skip")
+          Arg::new("skip")
             .help("Skip the first n finding(s)")
-            .short("s")
+            .short('s')
             .long("skip")
             .default_value("0"),
-          Arg::with_name("retries")
+          Arg::new("retries")
             .help("How often to retry if a download fails")
-            .short("r")
+            .short('r')
             .long("retries")
             .default_value("0"),
-            Arg::with_name("paging")
+            Arg::new("paging")
             .help("Tries to continue on the next page withing the download limit & offset")
-            .short("p")
+            .short('p')
             .long("paging"),
-            Arg::with_name("no-download")
+            Arg::new("no-download")
             .help("Exports the crawl result without downloading anything else")
-            .short("n")
+            .short('n')
             .long("no-download")
         ]),
     )
     .subcommand(
-      SubCommand::with_name("get-filters")
+      Command::new("get-filters")
         .about("Downloads the filter api data and stores it in JSON files")
         .after_help(constants::LICENSE),
     );
@@ -123,10 +120,10 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
                 matches.value_of("destination").unwrap(),
                 matches.occurrences_of("v"),
                 matches.is_present("json only"),
-                value_t!(sub_matches.value_of("limit"), usize).unwrap_or_else(|e| e.exit()),
-                value_t!(sub_matches.value_of("skip"), usize).unwrap_or_else(|e| e.exit()),
+                (sub_matches.value_of_t("limit")).unwrap_or_else(|e| e.exit()),
+                (sub_matches.value_of_t("skip")).unwrap_or_else(|e| e.exit()),
                 sub_matches.is_present("paging"),
-                value_t!(sub_matches.value_of("retries"), usize).unwrap_or_else(|e| e.exit()),
+                (sub_matches.value_of_t("retries")).unwrap_or_else(|e| e.exit()),
                 sub_matches.is_present("no-download"),
             )
             .await
