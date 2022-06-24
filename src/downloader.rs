@@ -209,9 +209,9 @@ pub async fn crawl_download(
     no_download: bool,
 ) -> Result<(), anyhow::Error> {
     // Create a client to make requests with
-    let client = reqwest::Client::new();
+    // let client = reqwest::Client::new();
 
-    let text = client.get(url).send().await?.text().await?;
+    let text = http_get_bypassed(url)?;
 
     let res_pages = {
         let mut res_pages = if paging {
@@ -244,7 +244,7 @@ pub async fn crawl_download(
         // TODO implement skip properly
 
         // Collect all URLs to download
-        let text = client.get(page.url).send().await?.text().await?;
+        let text = http_get_bypassed(page.url)?;
         let mut page_contents = extract_target_links(text);
         println!(
             "Collected {post_count: >2} posts from page {current_page: >4}; {total: >4} in total",
