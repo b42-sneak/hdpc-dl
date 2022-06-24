@@ -238,7 +238,7 @@ checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
 name = "hdpc-dl"
-version = "2.8.0"
+version = "2.9.0"
 dependencies = [
  "anyhow",
  "chrono",
