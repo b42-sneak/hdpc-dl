@@ -1,6 +1,7 @@
 use std::{thread, time::Duration};
 
 use crate::{
+    bypass::http_get_bypassed,
     constants,
     data::*,
     parser::{
@@ -45,11 +46,14 @@ pub async fn download_from_url(
     println!("{padding}Destination: {dest}");
     println!("{padding}URL: {url}");
 
+    pyo3::prepare_freethreaded_python();
+
     // Create a client to make requests with
     let client = reqwest::Client::new();
 
     // Request the HTML file from the server
-    let text = client.get(url).send().await?.text().await?.to_string();
+    // let text = client.get(url).send().await?.text().await?.to_string();
+    let text = http_get_bypassed(url)?;
 
     // The URLs of the pictures to be downloaded
     let picture_urls = extract_image_urls(&text);

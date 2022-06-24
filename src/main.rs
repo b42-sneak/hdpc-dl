@@ -1,3 +1,4 @@
+mod bypass;
 mod cli;
 mod constants;
 mod data;
