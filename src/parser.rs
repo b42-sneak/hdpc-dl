@@ -3,10 +3,13 @@ use std::borrow::Cow;
 use html_escape::decode_html_entities;
 use lazy_static::lazy_static;
 use regex::Regex;
+use reqwest::Client;
 use str_overlap::Overlap;
+use tracing::{info, info_span};
 
 use crate::data::{
-    InfoboxRow, Post, PostBuf, Ratings, RawInfoBoxRow, ResPage, TagLike, TagLikeBuf,
+    ApiViewResponse, Comment, Comments, InfoboxRow, Post, PostBuf, RawInfoBoxRow, ResPage, TagLike,
+    TagLikeBuf,
 };
 
 // Artist
@@ -17,7 +20,8 @@ lazy_static! {
     static ref CHAPTERS_RX: Regex = Regex::new(r#"<option (?:selected)? data-url="(.+?)">(.+?)</option>"#).unwrap();
     // static ref IMAGE_RX: Regex = Regex::new(r#"<a href="(https://image\.hdporncomics\.com/uploads/.+?\.jpg)" itemprop="contentUrl""#).unwrap();
     static ref IMAGE_RX: Regex = Regex::new(r#"<a href="(https://[^<>" ]+?\.hdporncomics\.com/uploads/.+?\.jpg)"#).unwrap();
-    static ref RATINGS_RX: Regex = Regex::new(r#"<span id="upVotes".*?> (\d+) </span>.*?<span id="downVotes".*?> (\d+) </span>.*?<span id="favorite-count".*?> ?(\d+) ?</span>"#).unwrap();
+    // static ref RATINGS_RX_FULL: Regex = Regex::new(r#"<span id="upVotes".*?> (\d+) </span>.*?<span id="downVotes".*?> (\d+) </span>.*?<span id="favorite-count".*?> ?(\d+) ?</span>"#).unwrap();
+    static ref RATINGS_RX: Regex = Regex::new(r#"<span id="upVotes"[^>]*>\s*(\d+)\s*</span>.*?<span id="downVotes"[^>]*>\s*(\d+)\s*</span>"#).unwrap();
     static ref TITLE_RX: Regex = Regex::new("<title>(.+?) (?:comic porn )?(?:&ndash;|-) HD Porn Comics</title>").unwrap();
     static ref COMMENTS_RX: Regex = Regex::new(r#"<h3.*?id="comments-title".*?>\s*(.*?)\s*</h3>"#).unwrap();
     static ref POST_ID_RX: Regex = Regex::new(r#"<div id="post-(\d+)"#).unwrap();
@@ -56,6 +60,8 @@ pub fn extract_from_infobox_row(row: RawInfoBoxRow) -> InfoboxRow {
 }
 
 pub fn extract_info_box_rows(text: &str) -> Vec<RawInfoBoxRow> {
+    info!("Extracting info box rows");
+
     INFOBOX_LINE_RX
         .captures_iter(text)
         .map(|caps| RawInfoBoxRow {
@@ -66,6 +72,8 @@ pub fn extract_info_box_rows(text: &str) -> Vec<RawInfoBoxRow> {
 }
 
 pub fn extract_chapters(text: &str) -> Vec<Post> {
+    info!("Extracting chapters");
+
     CHAPTERS_RX
         .captures_iter(text)
         .map(|caps| Post {
@@ -76,35 +84,79 @@ pub fn extract_chapters(text: &str) -> Vec<Post> {
 }
 
 pub fn extract_image_urls(text: &str) -> Vec<&str> {
+    info!("Extracting image URLs");
+
     IMAGE_RX
         .captures_iter(text)
         .map(|caps| caps.get(1).unwrap().as_str())
         .collect()
 }
 
-pub fn extract_ratings(text: &str) -> Option<Ratings> {
-    let caps = RATINGS_RX.captures_iter(text).next()?;
+/// Downloads views, likes, dislikes, favourites, and the post id from the API
+///
+/// The `url` must be the exact post url, as it's set in the `Referer` header to select the desired post
+pub async fn get_api_view(http_client: &Client, url: &str) -> reqwest::Result<ApiViewResponse> {
+    info!("Getting API info from URL {url}");
+    Ok(http_client
+        .get("https://hdporncomics.com/?rest_route=%2Fapi%2Fv1%2Fview")
+        .header("Referer", url)
+        .send()
+        .await?
+        .json()
+        .await
+        .unwrap())
+}
 
-    // .expect is used because the string above matched a known regex pattern
-    const MSG: &str = "Couldn't parse ratings. Are the integers valid?";
-    Some(Ratings {
-        upvotes: caps.get(1).unwrap().as_str().parse().expect(MSG),
-        downvotes: caps.get(2).unwrap().as_str().parse().expect(MSG),
-        favorites: caps.get(3).unwrap().as_str().parse().expect(MSG),
-    })
+pub async fn get_comments(post_id: u64, client: &Client) -> reqwest::Result<Vec<Comment>> {
+    info_span!("Downloading comments");
+
+    let res: Comments = client
+        .get(format!(
+            "https://hdporncomics.com/wp-json/api/v1/comments/{post_id}?page_no=1"
+        ))
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    info!("Got comments page 1");
+
+    let mut comments = res.comments;
+
+    for i in 2..=res.total_pages {
+        let mut res: Comments = client
+            .get(format!(
+                "https://hdporncomics.com/wp-json/api/v1/comments/{post_id}?page_no={i}"
+            ))
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        info!("Got comments page {i}");
+        comments.append(&mut res.comments);
+    }
+
+    Ok(comments)
 }
 
 pub fn extract_title(text: &str) -> Option<Cow<str>> {
+    info!("Extracting post title");
+
     Some(decode_html_entities(
         TITLE_RX.captures_iter(text).next()?.get(1)?.as_str(),
     ))
 }
 
 pub fn extract_comment_count(text: &str) -> Option<&str> {
+    info!("Extracting comment count");
+
     Some(COMMENTS_RX.captures_iter(text).next()?.get(1)?.as_str())
 }
 
 pub fn extract_post_id(text: &str) -> Option<u64> {
+    info!("Extracting post id");
+
     POST_ID_RX
         .captures_iter(text)
         .next()?

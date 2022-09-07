@@ -1,3 +1,5 @@
+use tracing::Level;
+
 mod bypass;
 mod cli;
 mod constants;
@@ -8,5 +10,15 @@ mod parser;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    cli::exec_cli().await
+    // construct a subscriber that prints formatted traces to stdout
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(Level::WARN)
+        .finish();
+
+    // use that subscriber to process traces emitted after this point
+    tracing::subscriber::set_global_default(subscriber)?;
+
+    cli::exec_cli().await.unwrap();
+
+    Ok(())
 }

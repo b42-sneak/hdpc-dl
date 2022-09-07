@@ -1,8 +1,11 @@
 use crate::{constants, downloader, filters};
 use clap::{Arg, Command};
+use tracing::info;
 
 /// Parse and execute the command specified via the CLI
 pub async fn exec_cli() -> Result<(), anyhow::Error> {
+    info!("Entered cli parsing method");
+
     // This variable is completely useless
     let temp = std::env::current_dir().unwrap();
 
@@ -30,6 +33,14 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
         .help("Only generate the JSON file")
         .short('j')
         .long("json-only"),
+      Arg::new("use bypass")
+        .help("Use a Python library to bypass scraping prevention measures")
+        .short('b')
+        .long("use-bypass"),
+      Arg::new("get comments")
+        .help("Download the comments of all targets (multiple requests)")
+        .short('c')
+        .long("get-comments"),
       Arg::new("v")
         .short('v')
         .multiple_occurrences(true)
@@ -107,6 +118,8 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
                 matches.occurrences_of("v"),
                 matches.is_present("json only"),
                 false,
+                matches.is_present("use bypass"),
+                matches.is_present("get comments"),
             )
             .await
         }
@@ -125,6 +138,8 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
                 sub_matches.is_present("paging"),
                 (sub_matches.value_of_t("retries")).unwrap_or_else(|e| e.exit()),
                 sub_matches.is_present("no-download"),
+                matches.is_present("use bypass"),
+                matches.is_present("get comments"),
             )
             .await
         }

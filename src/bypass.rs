@@ -1,7 +1,13 @@
 use pyo3::prelude::*;
+use tracing::info;
 
 /// Use a Python module to bypass some crawling annoyances
 pub fn http_get_bypassed(url: impl AsRef<str>) -> Result<String, anyhow::Error> {
+    info!(
+        "Downloading HTML with Python from {url}",
+        url = url.as_ref()
+    );
+
     let url = url.as_ref();
 
     Python::with_gil(|py| -> anyhow::Result<String> {

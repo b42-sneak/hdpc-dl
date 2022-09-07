@@ -5,27 +5,41 @@ use crate::{
     constants,
     data::*,
     parser::{
-        extract_chapters, extract_comment_count, extract_from_infobox_row, extract_image_urls,
-        extract_info_box_rows, extract_post_id, extract_ratings, extract_res_page_links,
-        extract_target_links, extract_title,
+        self, extract_chapters, extract_comment_count, extract_from_infobox_row,
+        extract_image_urls, extract_info_box_rows, extract_post_id, extract_res_page_links,
+        extract_target_links, extract_title, get_api_view,
     },
 };
 use anyhow::Context;
 use chrono::prelude::*;
 use tokio::{fs, io::AsyncWriteExt};
+use tracing::info;
 
-/// Downloads a comic given a URL and a destination
+/// Downloads comic(s) from given URL(s) to a target directory
 pub async fn download_from_urls(
     urls: Vec<&str>,
     dest: &str,
     verbosity: u64,
     json_only: bool,
     use_padding: bool,
+    use_python_bypass: bool,
+    get_comments: bool,
 ) -> Result<(), anyhow::Error> {
+    info!("Downloading pre-defined list of URLs");
+
     let max = urls.len();
     for (n, url) in urls.iter().enumerate().map(|(n, url)| (n + 1, url)) {
         println!("Download {n:02}/{max:02}");
-        download_from_url(url, dest, verbosity, json_only, use_padding).await?;
+        download_from_url(
+            url,
+            dest,
+            verbosity,
+            json_only,
+            use_padding,
+            use_python_bypass,
+            get_comments,
+        )
+        .await?;
     }
     println!("Download done.");
 
@@ -38,22 +52,32 @@ pub async fn download_from_url(
     verbosity: u64,
     json_only: bool,
     use_padding: bool,
+    use_python_bypass: bool,
+    get_comments: bool,
 ) -> Result<(), anyhow::Error> {
-    // TODO Views, likes and dislikes are only available using another POST request
+    info!("Getting target {url}");
+
     let padding = if use_padding { "  " } else { "" };
 
     // Inform the user about the actions to be taken
     println!("{padding}Destination: {dest}");
     println!("{padding}URL: {url}");
 
-    pyo3::prepare_freethreaded_python();
+    if use_python_bypass {
+        pyo3::prepare_freethreaded_python();
+        info!("Prepared the Python FFI");
+    }
 
     // Create a client to make requests with
     let client = reqwest::Client::new();
 
     // Request the HTML file from the server
-    // let text = client.get(url).send().await?.text().await?.to_string();
-    let text = http_get_bypassed(url)?;
+    let text = if use_python_bypass {
+        http_get_bypassed(url)?
+    } else {
+        info!("Downloading HTML with Reqwest from {url}",);
+        client.get(url).send().await?.text().await?.to_string()
+    };
 
     // The URLs of the pictures to be downloaded
     let picture_urls = extract_image_urls(&text);
@@ -61,8 +85,8 @@ pub async fn download_from_url(
     // Extract the title
     let title = extract_title(&text).context("Couldn't extract title")?;
 
-    // Extract the ratings (upvotes, downvotes, and favorites)
-    let ratings = extract_ratings(&text).context("Couldn't extract ratings")?;
+    // Get the stats from the API (upvotes, downvotes, views, and favorites)
+    let api_stats = get_api_view(&client, url).await?;
 
     let comment_count = extract_comment_count(&text).context("Couldn't extract comment count")?;
 
@@ -76,25 +100,34 @@ pub async fn download_from_url(
         .map(extract_from_infobox_row)
         .collect();
 
+    let comments = if get_comments {
+        let comments = parser::get_comments(post_id, &client).await?;
+        println!("{padding}Got {} comments", comments.len());
+        Some(comments)
+    } else {
+        info!("Skipped comment download");
+        None
+    };
+
     // Fill the data structure for the JSON document to be exported
-    let data = ExportV6 {
-        hdpc_dl_version: 6,
+    let data = ExportV7 {
+        hdpc_dl_version: 7,
         program_version: constants::VERSION,
         post_id,
         title: &title,
-        upvotes: ratings.upvotes,
-        downvotes: ratings.downvotes,
-        favorites: ratings.favorites,
+        api_stats,
         comment_count,
         download_date: Utc::now().to_rfc3339(),
         source_url: url,
         metadata: &info_rows,
         chapters,
         picture_urls: &picture_urls,
+        comments,
     };
 
     // Serialize the data to JSON
     let serialized = serde_json::to_string_pretty(&data).unwrap();
+    info!("Serialized the export");
 
     // Build-a-path
     let path = dest.to_owned() + "/" + &title;
@@ -207,6 +240,8 @@ pub async fn crawl_download(
     paging: bool,
     max_retries: usize,
     no_download: bool,
+    use_python_bypass: bool,
+    get_comments: bool,
 ) -> Result<(), anyhow::Error> {
     // Create a client to make requests with
     // let client = reqwest::Client::new();
@@ -313,7 +348,17 @@ pub async fn crawl_download(
         let mut retries = 0;
 
         // Download the target
-        while let Err(e) = download_from_url(&target.url, dest, verbosity, json_only, true).await {
+        while let Err(e) = download_from_url(
+            &target.url,
+            dest,
+            verbosity,
+            json_only,
+            true,
+            use_python_bypass,
+            get_comments,
+        )
+        .await
+        {
             retries += 1;
 
             if retries > max_retries {
