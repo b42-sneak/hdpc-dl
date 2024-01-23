@@ -1,3 +1,4 @@
+use old_cli::exec_cli;
 use tracing::Level;
 
 #[cfg(feature = "python_ffi")]
@@ -23,7 +24,9 @@ async fn main() -> Result<(), anyhow::Error> {
     // use that subscriber to process traces emitted after this point
     tracing::subscriber::set_global_default(subscriber)?;
 
-    old_cli::exec_cli().await?;
+    let app = old_cli::make_cli_parser();
+
+    exec_cli(app).await?;
 
     Ok(())
 }

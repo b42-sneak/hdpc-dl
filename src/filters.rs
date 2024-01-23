@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::constants;
 
 // TODO remove the following allow
@@ -64,4 +66,12 @@ async fn get_filters_text(client: reqwest::Client) -> Result<[String; 6], anyhow
         .text()
         .await?;
     Ok([artist, category, characters, groups, tags, parody])
+}
+
+pub type Filter = (u16, FilterValue);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilterValue {
+    name: String,
+    id: u64,
+    tag: String,
 }

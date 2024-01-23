@@ -4,7 +4,7 @@ use clap::{Arg, ArgAction, Command};
 use tracing::info;
 
 /// Parse and execute the command specified via the CLI
-pub async fn exec_cli() -> Result<(), anyhow::Error> {
+pub fn make_cli_parser() -> clap::Command {
     info!("Entered cli parsing method");
 
     // HACK
@@ -119,6 +119,10 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
         .after_help(constants::LICENSE),
     );
 
+    return app;
+}
+
+pub async fn exec_cli(app: Command) -> Result<(), anyhow::Error> {
     // Parse the CLI arguments
     let matches = app.get_matches();
 
