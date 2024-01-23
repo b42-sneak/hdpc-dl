@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use surrealdb::engine::remote::ws::Ws;
+use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::sql::Thing;
 use surrealdb::Surreal;
@@ -28,7 +28,7 @@ struct Record {
     id: Thing,
 }
 
-pub async fn oida() -> surrealdb::Result<()> {
+pub async fn connect() -> surrealdb::Result<Surreal<Client>> {
     // Connect to the server
     let db = Surreal::new::<Ws>("127.0.0.1:8000").await?;
 
@@ -40,8 +40,12 @@ pub async fn oida() -> surrealdb::Result<()> {
     .await?;
 
     // Select a specific namespace / database
-    db.use_ns("test").use_db("test").await?;
+    db.use_ns("hdpc-dl").use_db("hdpc-dl").await?;
 
+    Ok(db)
+}
+
+pub async fn oida(db: &Surreal<Client>) -> surrealdb::Result<()> {
     // Create a new person with a random id
     let created: Vec<Record> = db
         .create("person")
