@@ -1,5 +1,6 @@
 use tracing::Level;
 
+#[cfg(feature = "python_ffi")]
 mod bypass;
 mod constants;
 mod data;

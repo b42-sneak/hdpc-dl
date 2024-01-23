@@ -1,7 +1,8 @@
 use std::{thread, time::Duration};
 
+#[cfg(feature = "python_ffi")]
+use crate::bypass::http_get_bypassed;
 use crate::{
-    bypass::http_get_bypassed,
     constants,
     data::*,
     parser::{
@@ -22,7 +23,7 @@ pub async fn download_from_urls(
     verbosity: u64,
     json_only: bool,
     use_padding: bool,
-    use_python_bypass: bool,
+    #[cfg(feature = "python_ffi")] use_python_bypass: bool,
     get_comments: bool,
 ) -> Result<(), anyhow::Error> {
     info!("Downloading pre-defined list of URLs");
@@ -36,6 +37,7 @@ pub async fn download_from_urls(
             verbosity,
             json_only,
             use_padding,
+            #[cfg(feature = "python_ffi")]
             use_python_bypass,
             get_comments,
         )
@@ -52,7 +54,7 @@ pub async fn download_from_url(
     verbosity: u64,
     json_only: bool,
     use_padding: bool,
-    use_python_bypass: bool,
+    #[cfg(feature = "python_ffi")] use_python_bypass: bool,
     get_comments: bool,
 ) -> Result<(), anyhow::Error> {
     info!("Getting target {url}");
@@ -63,6 +65,7 @@ pub async fn download_from_url(
     println!("{padding}Destination: {dest}");
     println!("{padding}URL: {url}");
 
+    #[cfg(feature = "python_ffi")]
     if use_python_bypass {
         pyo3::prepare_freethreaded_python();
         info!("Prepared the Python FFI");
@@ -72,6 +75,7 @@ pub async fn download_from_url(
     let client = reqwest::Client::new();
 
     // Request the HTML file from the server
+    #[cfg(feature = "python_ffi")]
     let text = if use_python_bypass {
         http_get_bypassed(url.clone())?
     } else {
@@ -85,8 +89,22 @@ pub async fn download_from_url(
             .to_string()
     };
 
+    info!("Downloading HTML with Reqwest from {url}",);
+    #[cfg(not(feature = "python_ffi"))]
+    let text = client
+        .get(url.clone())
+        .send()
+        .await?
+        .text()
+        .await?
+        .to_string();
+
     // The URLs of the pictures to be downloaded
     let picture_urls = extract_image_urls(&text);
+
+    if verbosity >= 6 {
+        println!("{text}");
+    }
 
     // Extract the title
     let title = extract_title(&text).context("Couldn't extract title")?;
@@ -246,13 +264,23 @@ pub async fn crawl_download(
     paging: bool,
     max_retries: usize,
     no_download: bool,
-    use_python_bypass: bool,
+    #[cfg(feature = "python_ffi")] use_python_bypass: bool,
     get_comments: bool,
 ) -> Result<(), anyhow::Error> {
     // Create a client to make requests with
-    // let client = reqwest::Client::new();
+    #[cfg(not(feature = "python_ffi"))]
+    let client = reqwest::Client::new();
 
+    #[cfg(feature = "python_ffi")]
     let text = http_get_bypassed(url)?;
+    #[cfg(not(feature = "python_ffi"))]
+    let text = client
+        .get(url.clone())
+        .send()
+        .await?
+        .text()
+        .await?
+        .to_string();
 
     let res_pages = {
         let mut res_pages = if paging {
@@ -285,7 +313,16 @@ pub async fn crawl_download(
         // TODO implement skip properly
 
         // Collect all URLs to download
+        #[cfg(feature = "python_ffi")]
         let text = http_get_bypassed(page.url)?;
+        #[cfg(not(feature = "python_ffi"))]
+        let text = client
+            .get(page.url.clone())
+            .send()
+            .await?
+            .text()
+            .await?
+            .to_string();
         let mut page_contents = extract_target_links(text);
         println!(
             "Collected {post_count: >2} posts from page {current_page: >4}; {total: >4} in total",
@@ -360,6 +397,7 @@ pub async fn crawl_download(
             verbosity,
             json_only,
             true,
+            #[cfg(feature = "python_ffi")]
             use_python_bypass,
             get_comments,
         )

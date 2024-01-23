@@ -37,6 +37,7 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
         .short('j')
         .action(ArgAction::SetTrue)
         .long("json-only"),
+      #[cfg(feature = "python_ffi")]
       Arg::new("use bypass")
         .help("Use a Python library to bypass scraping prevention measures")
         .short('b')
@@ -128,6 +129,7 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
                 matches.get_count("v").into(),
                 matches.get_flag("json only"),
                 false,
+                #[cfg(feature = "python_ffi")]
                 matches.get_flag("use bypass"),
                 matches.get_flag("get comments"),
             )
@@ -148,6 +150,7 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
                 sub_matches.get_flag("paging"),
                 (sub_matches.get_one("retries")).cloned().unwrap(),
                 sub_matches.get_flag("no-download"),
+                #[cfg(feature = "python_ffi")]
                 matches.get_flag("use bypass"),
                 matches.get_flag("get comments"),
             )
