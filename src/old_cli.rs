@@ -1,4 +1,5 @@
-use crate::{constants, downloader, filters};
+use crate::{constants, downloader, filters, jobs::run_jobs_from_path};
+use anyhow::Context;
 use clap::{Arg, ArgAction, Command};
 use tracing::info;
 
@@ -53,6 +54,16 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
         .action(ArgAction::Count)
         .help("Sets the level of verbosity: 1 for file names, 2 for percentage decimals"),
     ])
+    //
+    // The big one
+    .subcommand(
+    Command::new("run-jobs")
+      .about("Run a job with db")
+      .args(&[Arg::new("jobs-file-location")
+        .help("The path to the JSON file")
+        .required(true)
+      ])
+    )
     //
     // One
     .subcommand(
@@ -155,6 +166,14 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
                 matches.get_flag("get comments"),
             )
             .await
+        }
+
+        Some("run-jobs") => {
+            let sub_matches = matches.subcommand_matches("run-jobs").unwrap();
+            let path: String = sub_matches.get_one("jobs-file-location").cloned().unwrap();
+            let verbosity = matches.get_count("v").into();
+
+            run_jobs_from_path(path.into(), verbosity).await
         }
 
         Some("get-filters") => filters::get_filters().await,

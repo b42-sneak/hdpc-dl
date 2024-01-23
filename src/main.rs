@@ -7,6 +7,7 @@ mod data;
 mod db;
 mod downloader;
 mod filters;
+mod jobs;
 mod old_cli;
 mod parser;
 
@@ -22,7 +23,7 @@ async fn main() -> Result<(), anyhow::Error> {
     // use that subscriber to process traces emitted after this point
     tracing::subscriber::set_global_default(subscriber)?;
 
-    old_cli::exec_cli().await.unwrap();
+    old_cli::exec_cli().await?;
 
     Ok(())
 }

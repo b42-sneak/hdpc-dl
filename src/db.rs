@@ -45,7 +45,7 @@ pub async fn connect() -> surrealdb::Result<Surreal<Client>> {
     Ok(db)
 }
 
-pub async fn oida(db: &Surreal<Client>) -> surrealdb::Result<()> {
+async fn foobar(db: &Surreal<Client>) -> surrealdb::Result<()> {
     // Create a new person with a random id
     let created: Vec<Record> = db
         .create("person")

@@ -1203,6 +1203,7 @@ dependencies = [
  "clap",
  "html-escape",
  "lazy_static",
+ "log",
  "pyo3",
  "regex",
  "reqwest",
