@@ -15,7 +15,7 @@ include = ["/README.md", "/LICENSE.md", "/Cargo.toml", "/Cargo.lock", "/src"]
 
 [dependencies]
 reqwest = { version = "0.11.10", features = ["json"] }
-clap = "3.1.18"
+clap = "4.4.18"
 tokio = { version = "1.18.2", features = ["full"] }
 anyhow = "1.0.32"
 serde = { version = "1.0", features = ["derive"] }

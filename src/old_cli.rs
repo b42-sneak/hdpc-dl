@@ -1,18 +1,21 @@
 use crate::{constants, downloader, filters};
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use tracing::info;
 
 /// Parse and execute the command specified via the CLI
 pub async fn exec_cli() -> Result<(), anyhow::Error> {
     info!("Entered cli parsing method");
 
-    // This variable is completely useless
-    let temp = std::env::current_dir().unwrap();
+    // HACK
+    let val = &*Box::leak(
+        std::env::current_dir()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned()
+            .into_boxed_str(),
+    );
 
-    // The working directory
-    let pwd = temp.to_str().unwrap();
-
-    // The app definition
     let app = Command::new(constants::NAME)
     .version(constants::VERSION)
     .author("b42-sneak <GitHub @b42-sneak>")
@@ -26,24 +29,27 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
     .args(&[
       Arg::new("destination")
         .help("Sets the download destination path")
-        .default_value(pwd)
+        .default_value(val)
         .short('d')
         .long("destination"),
       Arg::new("json only")
         .help("Only generate the JSON file")
         .short('j')
+        .action(ArgAction::SetTrue)
         .long("json-only"),
       Arg::new("use bypass")
         .help("Use a Python library to bypass scraping prevention measures")
         .short('b')
+        .action(ArgAction::SetTrue)
         .long("use-bypass"),
       Arg::new("get comments")
         .help("Download the comments of all targets (multiple requests)")
         .short('c')
+        .action(ArgAction::SetTrue)
         .long("get-comments"),
       Arg::new("v")
         .short('v')
-        .multiple_occurrences(true)
+        .action(ArgAction::Count)
         .help("Sets the level of verbosity: 1 for file names, 2 for percentage decimals"),
     ])
     //
@@ -56,7 +62,7 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
         .args(&[Arg::new("URL")
           .help("Sets the URL of the comic to download")
           .required(true)
-          .multiple_values(true)
+          .action(ArgAction::Append)
           .index(1)]),
     )
     //
@@ -113,13 +119,17 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
 
             // Call the download function
             downloader::download_from_urls(
-                sub_matches.values_of("URL").unwrap().collect::<Vec<_>>(),
-                matches.value_of("destination").unwrap(),
-                matches.occurrences_of("v"),
-                matches.is_present("json only"),
+                sub_matches
+                    .get_many::<String>("URL")
+                    .unwrap()
+                    .cloned()
+                    .collect::<Vec<_>>(),
+                matches.get_one("destination").cloned().unwrap(),
+                matches.get_count("v").into(),
+                matches.get_flag("json only"),
                 false,
-                matches.is_present("use bypass"),
-                matches.is_present("get comments"),
+                matches.get_flag("use bypass"),
+                matches.get_flag("get comments"),
             )
             .await
         }
@@ -129,17 +139,17 @@ pub async fn exec_cli() -> Result<(), anyhow::Error> {
 
             // Call the crawl function
             downloader::crawl_download(
-                sub_matches.value_of("URL").unwrap(),
-                matches.value_of("destination").unwrap(),
-                matches.occurrences_of("v"),
-                matches.is_present("json only"),
-                (sub_matches.value_of_t("limit")).unwrap_or_else(|e| e.exit()),
-                (sub_matches.value_of_t("skip")).unwrap_or_else(|e| e.exit()),
-                sub_matches.is_present("paging"),
-                (sub_matches.value_of_t("retries")).unwrap_or_else(|e| e.exit()),
-                sub_matches.is_present("no-download"),
-                matches.is_present("use bypass"),
-                matches.is_present("get comments"),
+                sub_matches.get_one("URL").cloned().unwrap(),
+                matches.get_one("destination").cloned().unwrap(),
+                matches.get_count("v").into(),
+                matches.get_flag("json only"),
+                (sub_matches.get_one("limit")).cloned().unwrap(),
+                (sub_matches.get_one("skip")).cloned().unwrap(),
+                sub_matches.get_flag("paging"),
+                (sub_matches.get_one("retries")).cloned().unwrap(),
+                sub_matches.get_flag("no-download"),
+                matches.get_flag("use bypass"),
+                matches.get_flag("get comments"),
             )
             .await
         }

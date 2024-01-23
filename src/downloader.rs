@@ -17,8 +17,8 @@ use tracing::info;
 
 /// Downloads comic(s) from given URL(s) to a target directory
 pub async fn download_from_urls(
-    urls: Vec<&str>,
-    dest: &str,
+    urls: Vec<String>,
+    dest: String,
     verbosity: u64,
     json_only: bool,
     use_padding: bool,
@@ -31,8 +31,8 @@ pub async fn download_from_urls(
     for (n, url) in urls.iter().enumerate().map(|(n, url)| (n + 1, url)) {
         println!("Download {n:02}/{max:02}");
         download_from_url(
-            url,
-            dest,
+            url.to_string(),
+            dest.clone(),
             verbosity,
             json_only,
             use_padding,
@@ -47,8 +47,8 @@ pub async fn download_from_urls(
 }
 
 pub async fn download_from_url(
-    url: &str,
-    dest: &str,
+    url: String,
+    dest: String,
     verbosity: u64,
     json_only: bool,
     use_padding: bool,
@@ -73,10 +73,16 @@ pub async fn download_from_url(
 
     // Request the HTML file from the server
     let text = if use_python_bypass {
-        http_get_bypassed(url)?
+        http_get_bypassed(url.clone())?
     } else {
         info!("Downloading HTML with Reqwest from {url}",);
-        client.get(url).send().await?.text().await?.to_string()
+        client
+            .get(url.clone())
+            .send()
+            .await?
+            .text()
+            .await?
+            .to_string()
     };
 
     // The URLs of the pictures to be downloaded
@@ -86,7 +92,7 @@ pub async fn download_from_url(
     let title = extract_title(&text).context("Couldn't extract title")?;
 
     // Get the stats from the API (upvotes, downvotes, views, and favorites)
-    let api_stats = get_api_view(&client, url).await?;
+    let api_stats = get_api_view(&client, &url).await?;
 
     let comment_count = extract_comment_count(&text).context("Couldn't extract comment count")?;
 
@@ -118,7 +124,7 @@ pub async fn download_from_url(
         api_stats,
         comment_count,
         download_date: Utc::now().to_rfc3339(),
-        source_url: url,
+        source_url: &url,
         metadata: &info_rows,
         chapters,
         picture_urls: &picture_urls,
@@ -349,8 +355,8 @@ pub async fn crawl_download(
 
         // Download the target
         while let Err(e) = download_from_url(
-            &target.url,
-            dest,
+            target.url.clone(),
+            dest.to_owned(),
             verbosity,
             json_only,
             true,
